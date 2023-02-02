@@ -14,6 +14,7 @@ omcpyimage = "omcpyimage.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+numpy = "^1.24.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
