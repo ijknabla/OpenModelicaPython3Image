@@ -25,5 +25,12 @@ pyproject-flake8 = "^6.0.0.post1"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
 [tool.flake8]
 exclude = ".venv"
