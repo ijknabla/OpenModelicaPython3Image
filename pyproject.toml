@@ -15,6 +15,11 @@ omcpyimage = "omcpyimage.__main__:main"
 [tool.poetry.dependencies]
 python = "^3.11"
 
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+isort = "^5.12.0"
+mypy = "^0.991"
+pyproject-flake8 = "^6.0.0.post1"
 
 [build-system]
 requires = ["poetry-core"]
