@@ -5,6 +5,12 @@ description = ""
 authors = ["ijknabla <ijknabla@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [
+    { include = "omcpyimage"},
+]
+
+[tool.poetry.scripts]
+omcpyimage = "omcpyimage.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
