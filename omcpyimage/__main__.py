@@ -1,4 +1,8 @@
-def main() -> None:
+from . import run_coroutine
+
+
+@run_coroutine
+async def main() -> None:
     ...
 
 
