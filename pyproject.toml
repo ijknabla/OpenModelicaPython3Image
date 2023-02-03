@@ -44,5 +44,6 @@ line_length = 79
 [[tool.mypy.overrides]]
 module = [
     "lxml.*",
+    "schema",
 ]
 ignore_missing_imports = true
