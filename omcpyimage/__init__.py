@@ -1,8 +1,10 @@
+import json
+import re
 from asyncio import create_subprocess_exec, gather, run
 from collections.abc import Callable, Coroutine
 from functools import wraps
 from itertools import product
-from subprocess import DEVNULL
+from subprocess import PIPE
 from typing import Any, ParamSpec, TypeVar
 
 from numpy import array, bool_
@@ -12,6 +14,9 @@ from ._types import Debian, Python
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+ARCHITECTURE = "amd64"
 
 
 def run_coroutine(
@@ -46,7 +51,20 @@ async def _exists_in_dockerhub(
         "manifest",
         "inspect",
         f"python:{python}-{debian}",
-        stdout=DEVNULL,
+        stdout=PIPE,
+        stderr=PIPE,
     )
-    await process.communicate()
-    return process.returncode == 0
+    out, err = await process.communicate()
+    retcode = process.returncode
+
+    if process.returncode == 0:
+        architectures = set(
+            manifest["platform"]["architecture"]
+            for manifest in json.loads(out)["manifests"]
+        )
+        assert ARCHITECTURE in architectures
+        return True
+    elif re.match(rb"^no\s*such\s*manifest\s*:", err):
+        return False
+    else:
+        raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
