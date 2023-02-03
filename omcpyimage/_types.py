@@ -2,7 +2,16 @@ import enum
 import re
 from collections.abc import Hashable
 from functools import lru_cache
-from typing import Protocol
+from typing import NewType, Protocol, TypedDict
+
+ShortVersionString = NewType("ShortVersionString", str)
+DistroName = NewType("DistroName", str)
+
+
+class Setting(TypedDict):
+    py: list[ShortVersionString]
+    omc: list[ShortVersionString]
+    distro: list[DistroName]
 
 
 class SupportsName(Hashable, Protocol):
