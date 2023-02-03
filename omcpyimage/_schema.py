@@ -1,13 +1,15 @@
-import re
 from functools import lru_cache
 from typing import Any
 
 from schema import And, Schema
 
 from ._decorators import schema2checker
-from ._types import DistroName, Setting, ShortVersionString
-
-SHORT_VERSION_PATTERN = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
+from ._types import (
+    SHORT_VERSION_PATTERN,
+    DistroName,
+    Setting,
+    ShortVersionString,
+)
 
 
 @schema2checker(Any, Setting)

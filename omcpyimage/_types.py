@@ -8,6 +8,13 @@ DistroName = NewType("DistroName", str)
 ModelicaVersionString = NewType("ModelicaVersionString", str)
 ShortVersionString = NewType("ShortVersionString", str)
 
+SHORT_VERSION_PATTERN = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
+MODELICA_VERSION_PATTERN = re.compile(
+    r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)"
+    r"(~dev\.alpha(?P<alpha>\d+)|~dev\.beta(?P<beta>\d+)|)"
+    r"\-(?P<serial>\d+)"
+)
+
 
 class Setting(TypedDict):
     py: list[ShortVersionString]
@@ -26,7 +33,7 @@ class Level(enum.Enum):
 
 
 class Release(NamedTuple):
-    level: Level = Level.alpha
+    level: Level = Level.final
     version: int = 0
 
     @property
@@ -55,6 +62,39 @@ class VersionTuple(NamedTuple):
             f"{self.major}.{self.minor}.{self.micro}"
             f"{self.release.omc_repr}-{self.serial}"
         )
+
+    @classmethod
+    def parse_omc(cls, s: ModelicaVersionString) -> "VersionTuple":
+        match = MODELICA_VERSION_PATTERN.match(s)
+        if match is None:
+            raise ValueError(
+                f"{s!r} does not match {MODELICA_VERSION_PATTERN.pattern}"
+            )
+        match match.groups():
+            case major, minor, micro, _, None, None, serial:
+                return cls(
+                    major=int(major),
+                    minor=int(minor),
+                    micro=int(micro),
+                    serial=int(serial),
+                )
+            case major, minor, micro, _, alpha, None, serial:
+                return cls(
+                    major=int(major),
+                    minor=int(minor),
+                    micro=int(micro),
+                    release=Release(level=Level.alpha, version=int(alpha)),
+                    serial=int(serial),
+                )
+            case major, minor, micro, _, None, beta, serial:
+                return cls(
+                    major=int(major),
+                    minor=int(minor),
+                    micro=int(micro),
+                    release=Release(level=Level.beta, version=int(beta)),
+                    serial=int(serial),
+                )
+        raise NotImplementedError()
 
 
 class SupportsName(Hashable, Protocol):
