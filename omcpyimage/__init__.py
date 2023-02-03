@@ -2,11 +2,14 @@ import json
 import re
 from asyncio import create_subprocess_exec, gather, run
 from collections.abc import Callable, Coroutine
+from contextlib import AsyncExitStack
 from functools import wraps
 from itertools import product
 from subprocess import PIPE
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, NamedTuple, ParamSpec, TypeVar
 
+from aiohttp import ClientSession
+from lxml.html import fromstring
 from numpy import array, bool_
 from numpy.typing import NDArray
 
@@ -40,6 +43,43 @@ async def get_python_vs_debian() -> NDArray[bool_]:
         dtype=bool_,
     )
     return flat.reshape([len(Python), len(Debian)])
+
+
+class SemanticVersion(NamedTuple):
+    major: int
+    minor: int
+    patch: int
+    build: int
+
+    @property
+    def major_minor(self) -> tuple[int, int]:
+        return self.major, self.minor
+
+    @property
+    def patch_build(self) -> tuple[int, int]:
+        return self.patch, self.build
+
+
+async def _get_openmodelica_versions(
+    debian: Debian,
+) -> list[SemanticVersion]:
+    result = list[SemanticVersion]()
+    uri = f"https://build.openmodelica.org/apt/pool/contrib-{debian}/"
+    async with AsyncExitStack() as stack:
+        session = await stack.enter_async_context(ClientSession())
+        response = await stack.enter_async_context(session.get(uri))
+        root = fromstring(await response.read())
+        for a in root.xpath("//td/a"):
+            match = re.match(
+                (
+                    r"^openmodelica_(\d+)\.(\d+).(\d+)\-(\d+)"
+                    rf"_{ARCHITECTURE}\.deb$"
+                ),
+                a.text,
+            )
+            if match is not None:
+                result.append(SemanticVersion(*map(int, match.groups())))
+    return result
 
 
 async def _exists_in_dockerhub(
