@@ -1,17 +1,60 @@
 import enum
 import re
 from collections.abc import Hashable
-from functools import lru_cache
-from typing import NewType, Protocol, TypedDict
+from functools import lru_cache, total_ordering
+from typing import NamedTuple, NewType, Protocol, TypedDict
 
-ShortVersionString = NewType("ShortVersionString", str)
 DistroName = NewType("DistroName", str)
+ModelicaVersionString = NewType("ModelicaVersionString", str)
+ShortVersionString = NewType("ShortVersionString", str)
 
 
 class Setting(TypedDict):
     py: list[ShortVersionString]
     omc: list[ShortVersionString]
     distro: list[DistroName]
+
+
+@total_ordering
+class Level(enum.Enum):
+    alpha = enum.auto()
+    beta = enum.auto()
+    final = enum.auto()
+
+    def __lt__(self, other: "Level") -> bool:
+        return self.value < other.value
+
+
+class Release(NamedTuple):
+    level: Level = Level.alpha
+    version: int = 0
+
+    @property
+    def omc_repr(self) -> str:
+        match self:
+            case (Level.alpha, v):
+                return f"~dev.alpha{v}"
+            case (Level.beta, v):
+                return f"~dev.beta{v}"
+            case (Level.final, _):
+                return ""
+            case _:
+                raise NotImplementedError()
+
+
+class VersionTuple(NamedTuple):
+    major: int
+    minor: int
+    micro: int = 0
+    release: Release = Release()
+    serial: int = 0
+
+    @property
+    def omc_repr(self) -> ModelicaVersionString:
+        return ModelicaVersionString(
+            f"{self.major}.{self.minor}.{self.micro}"
+            f"{self.release.omc_repr}-{self.serial}"
+        )
 
 
 class SupportsName(Hashable, Protocol):
