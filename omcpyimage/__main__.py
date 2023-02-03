@@ -23,10 +23,6 @@ async def main() -> None:
         for debian, value in zip(Debian, row):
             print(f"{python}-{debian}", value)
 
-    xox = (0 <= openmodelica_vs_debian.min(axis=-1))[:, None, :]
-    oxx = python_vs_debian[None, :, :]
-    print(xox & oxx)
-
 
 if __name__ == "__main__":
     main()
