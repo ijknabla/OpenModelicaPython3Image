@@ -6,8 +6,8 @@ from functools import lru_cache, total_ordering
 from typing import NamedTuple, NewType, Protocol, TypedDict
 
 DistroName = NewType("DistroName", str)
-ModelicaVersionString = NewType("ModelicaVersionString", str)
-ShortVersionString = NewType("ShortVersionString", str)
+OMCVersionString = NewType("OMCVersionString", str)
+VersionString = NewType("VersionString", str)
 
 SHORT_VERSION_PATTERN = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
 MODELICA_VERSION_PATTERN = re.compile(
@@ -18,8 +18,8 @@ MODELICA_VERSION_PATTERN = re.compile(
 
 
 class Setting(TypedDict):
-    py: list[ShortVersionString]
-    omc: list[ShortVersionString]
+    py: list[VersionString]
+    omc: list[VersionString]
     distro: list[DistroName]
 
 
@@ -63,14 +63,14 @@ class OMCVersion(Version):
     serial: int = 0
 
     @property
-    def omc_repr(self) -> ModelicaVersionString:
-        return ModelicaVersionString(
+    def omc_repr(self) -> OMCVersionString:
+        return OMCVersionString(
             f"{self.major}.{self.minor}.{self.micro}"
             f"{self.release.omc_repr}-{self.serial}"
         )
 
     @classmethod
-    def parse_omc(cls, s: ModelicaVersionString) -> "OMCVersion":
+    def parse_omc(cls, s: OMCVersionString) -> "OMCVersion":
         match = MODELICA_VERSION_PATTERN.match(s)
         if match is None:
             raise ValueError(

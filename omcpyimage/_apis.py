@@ -4,12 +4,7 @@ from typing import Any
 from schema import And, Schema
 
 from ._decorators import schema2checker
-from ._types import (
-    SHORT_VERSION_PATTERN,
-    DistroName,
-    Setting,
-    ShortVersionString,
-)
+from ._types import SHORT_VERSION_PATTERN, DistroName, Setting, VersionString
 
 
 @schema2checker(Any, Setting)
@@ -17,7 +12,7 @@ def is_setting() -> Schema:
     return _setting_schema()
 
 
-@schema2checker(Any, ShortVersionString)
+@schema2checker(Any, VersionString)
 def is_short_version_string() -> Schema:
     return _short_version_string_schema()
 
