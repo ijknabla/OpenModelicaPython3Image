@@ -1,6 +1,7 @@
 import enum
 import re
 from collections.abc import Hashable
+from dataclasses import dataclass
 from functools import lru_cache, total_ordering
 from typing import NamedTuple, NewType, Protocol, TypedDict
 
@@ -49,9 +50,14 @@ class Release(NamedTuple):
                 raise NotImplementedError()
 
 
-class VersionTuple(NamedTuple):
+@dataclass(frozen=True)
+class Version:
     major: int
     minor: int
+
+
+@dataclass(frozen=True)
+class OMCVersion(Version):
     micro: int = 0
     release: Release = Release()
     serial: int = 0
@@ -64,7 +70,7 @@ class VersionTuple(NamedTuple):
         )
 
     @classmethod
-    def parse_omc(cls, s: ModelicaVersionString) -> "VersionTuple":
+    def parse_omc(cls, s: ModelicaVersionString) -> "OMCVersion":
         match = MODELICA_VERSION_PATTERN.match(s)
         if match is None:
             raise ValueError(

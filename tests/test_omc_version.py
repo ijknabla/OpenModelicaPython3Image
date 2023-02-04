@@ -1,6 +1,6 @@
 import pytest
 
-from omcpyimage._types import Level, VersionTuple
+from omcpyimage._types import Level, OMCVersion
 
 
 @pytest.mark.parametrize("build", range(2))
@@ -17,5 +17,5 @@ def test_omc_version(
     stage: int | None,
     build: int,
 ) -> None:
-    version = VersionTuple(major=major, minor=minor, micro=micro)
+    version = OMCVersion(major=major, minor=minor, micro=micro)
     print(version.omc_repr)
