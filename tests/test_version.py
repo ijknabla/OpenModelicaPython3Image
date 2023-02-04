@@ -14,7 +14,7 @@ def test_version(
 ) -> None:
     version = Version(major=major, minor=minor)
 
-    assert version == parse_version(f"{version!s}")
+    assert version == parse_version(f"{version}")
 
 
 @pytest.mark.parametrize("build", range(2))
