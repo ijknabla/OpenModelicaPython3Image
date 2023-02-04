@@ -2,7 +2,7 @@ from contextlib import ExitStack
 
 import pytest
 
-from omcpyimage._apis import parse_version
+from omcpyimage._apis import parse_omc_version, parse_version
 from omcpyimage._types import OMCVersion, Release, Version
 
 
@@ -13,6 +13,7 @@ def test_version(
     minor: int,
 ) -> None:
     version = Version(major=major, minor=minor)
+
     assert version == parse_version(f"{version!s}")
 
 
@@ -44,4 +45,5 @@ def test_omc_version(
         )
     if version is None:
         return
-    assert version == OMCVersion.parse_omc(f"{version}")
+
+    assert version == parse_omc_version(f"{version}")

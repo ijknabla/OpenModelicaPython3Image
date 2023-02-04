@@ -9,12 +9,6 @@ DistroName = NewType("DistroName", str)
 OMCVersionString = str
 VersionString = str
 
-MODELICA_VERSION_PATTERN = re.compile(
-    r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)"
-    r"(~dev\.alpha(?P<alpha>\d+)|~dev\.beta(?P<beta>\d+)|)"
-    r"\-(?P<build>\d+)"
-)
-
 
 class Setting(TypedDict):
     py: list[VersionString]
@@ -75,41 +69,6 @@ class OMCVersion(Version):
         return (
             f"{self.major}.{self.minor}.{self.micro}"
             f"{release_stage}-{self.build}"
-        )
-
-    @classmethod
-    def parse_omc(cls, s: OMCVersionString) -> "OMCVersion":
-        match = MODELICA_VERSION_PATTERN.match(s)
-        if match is None:
-            raise ValueError(
-                f"{s!r} does not match {MODELICA_VERSION_PATTERN.pattern}"
-            )
-        major = int(match.group("major"))
-        minor = int(match.group("minor"))
-        micro = int(match.group("micro"))
-        release: Release
-        build = int(match.group("build"))
-        stage: int | None
-        match match.group("alpha"), match.group("beta"):
-            case None, None:
-                release = Release.final
-                stage = None
-            case alpha, None:
-                release = Release.alpha
-                stage = int(alpha)
-            case None, beta:
-                release = Release.beta
-                stage = int(beta)
-            case _:
-                raise NotImplementedError()
-
-        return cls(
-            major=major,
-            minor=minor,
-            micro=micro,
-            release=release,
-            stage=stage,
-            build=build,
         )
 
 
