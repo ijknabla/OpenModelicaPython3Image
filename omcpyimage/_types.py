@@ -9,7 +9,6 @@ DistroName = NewType("DistroName", str)
 OMCVersionString = NewType("OMCVersionString", str)
 VersionString = NewType("VersionString", str)
 
-SHORT_VERSION_PATTERN = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
 MODELICA_VERSION_PATTERN = re.compile(
     r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)"
     r"(~dev\.alpha(?P<alpha>\d+)|~dev\.beta(?P<beta>\d+)|)"
@@ -54,6 +53,9 @@ class Release(NamedTuple):
 class Version:
     major: int
     minor: int
+
+    def __str__(self) -> str:
+        return f"{self.major}.{self.minor}"
 
 
 @dataclass(frozen=True)

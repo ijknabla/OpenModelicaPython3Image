@@ -1,10 +1,11 @@
+import re
 from functools import lru_cache
 from typing import Any
 
 from schema import And, Schema
 
 from ._decorators import schema2checker
-from ._types import SHORT_VERSION_PATTERN, DistroName, Setting, VersionString
+from ._types import DistroName, Setting, Version, VersionString
 
 
 @schema2checker(Any, Setting)
@@ -31,6 +32,19 @@ def _setting_schema() -> Schema:
             "distro": And([_distro_name_schema()], len),
         }
     )
+
+
+SHORT_VERSION_PATTERN = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
+
+
+def parse_version(s: VersionString) -> Version:
+    match = SHORT_VERSION_PATTERN.match(s)
+    if match is None:
+        raise ValueError(
+            f"{s!r} does not match {SHORT_VERSION_PATTERN.pattern}"
+        )
+    major, minor = match.groups()
+    return Version(major=int(major), minor=int(minor))
 
 
 @lru_cache(1)
