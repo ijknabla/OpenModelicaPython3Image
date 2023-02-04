@@ -7,7 +7,7 @@ from typing import NamedTuple, NewType, Protocol, TypedDict
 
 DistroName = NewType("DistroName", str)
 OMCVersionString = NewType("OMCVersionString", str)
-VersionString = NewType("VersionString", str)
+VersionString = str
 
 MODELICA_VERSION_PATTERN = re.compile(
     r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)"
@@ -54,7 +54,7 @@ class Version:
     major: int
     minor: int
 
-    def __str__(self) -> str:
+    def __str__(self) -> VersionString:
         return f"{self.major}.{self.minor}"
 
 
