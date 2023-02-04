@@ -71,6 +71,10 @@ class OMCVersion(Version):
             f"{release_stage}-{self.build}"
         )
 
+    @property
+    def short(self) -> Version:
+        return Version(major=self.major, minor=self.minor)
+
 
 class SupportsName(Hashable, Protocol):
     name: str
