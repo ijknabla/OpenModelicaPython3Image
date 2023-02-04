@@ -1,7 +1,9 @@
+from contextlib import ExitStack
+
 import pytest
 
 from omcpyimage._apis import parse_version
-from omcpyimage._types import Level, OMCVersion, Version
+from omcpyimage._types import OMCVersion, Release, Version
 
 
 @pytest.mark.parametrize("minor", range(2))
@@ -16,7 +18,7 @@ def test_version(
 
 @pytest.mark.parametrize("build", range(2))
 @pytest.mark.parametrize("stage", [None, *range(2)])
-@pytest.mark.parametrize("release", Level)
+@pytest.mark.parametrize("release", Release)
 @pytest.mark.parametrize("micro", range(2))
 @pytest.mark.parametrize("minor", range(2))
 @pytest.mark.parametrize("major", range(2))
@@ -24,9 +26,22 @@ def test_omc_version(
     major: int,
     minor: int,
     micro: int,
-    release: Level,
+    release: Release,
     stage: int | None,
     build: int,
 ) -> None:
-    version = OMCVersion(major=major, minor=minor, micro=micro)
-    print(version.omc_repr)
+    version: OMCVersion | None = None
+    with ExitStack() as stack:
+        if not (release is Release.final) == (stage is None):
+            stack.enter_context(pytest.raises(ValueError))
+        version = OMCVersion(
+            major=major,
+            minor=minor,
+            micro=micro,
+            release=release,
+            stage=stage,
+            build=build,
+        )
+    if version is None:
+        return
+    assert version == OMCVersion.parse_omc(f"{version}")

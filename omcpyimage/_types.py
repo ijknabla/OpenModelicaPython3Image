@@ -3,16 +3,16 @@ import re
 from collections.abc import Hashable
 from dataclasses import dataclass
 from functools import lru_cache, total_ordering
-from typing import NamedTuple, NewType, Protocol, TypedDict
+from typing import NewType, Protocol, TypedDict
 
 DistroName = NewType("DistroName", str)
-OMCVersionString = NewType("OMCVersionString", str)
+OMCVersionString = str
 VersionString = str
 
 MODELICA_VERSION_PATTERN = re.compile(
     r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)"
     r"(~dev\.alpha(?P<alpha>\d+)|~dev\.beta(?P<beta>\d+)|)"
-    r"\-(?P<serial>\d+)"
+    r"\-(?P<build>\d+)"
 )
 
 
@@ -20,33 +20,6 @@ class Setting(TypedDict):
     py: list[VersionString]
     omc: list[VersionString]
     distro: list[DistroName]
-
-
-@total_ordering
-class Level(enum.Enum):
-    alpha = enum.auto()
-    beta = enum.auto()
-    final = enum.auto()
-
-    def __lt__(self, other: "Level") -> bool:
-        return self.value < other.value
-
-
-class Release(NamedTuple):
-    level: Level = Level.final
-    version: int = 0
-
-    @property
-    def omc_repr(self) -> str:
-        match self:
-            case (Level.alpha, v):
-                return f"~dev.alpha{v}"
-            case (Level.beta, v):
-                return f"~dev.beta{v}"
-            case (Level.final, _):
-                return ""
-            case _:
-                raise NotImplementedError()
 
 
 @dataclass(frozen=True)
@@ -58,17 +31,50 @@ class Version:
         return f"{self.major}.{self.minor}"
 
 
+@total_ordering
+class Release(enum.Enum):
+    alpha = enum.auto()
+    beta = enum.auto()
+    final = enum.auto()
+
+    def __lt__(self, other: "Release") -> bool:
+        return self.value < other.value
+
+
 @dataclass(frozen=True)
 class OMCVersion(Version):
-    micro: int = 0
-    release: Release = Release()
-    serial: int = 0
+    micro: int
+    release: Release
+    stage: int | None
+    build: int
 
-    @property
-    def omc_repr(self) -> OMCVersionString:
-        return OMCVersionString(
+    def __post_init__(self) -> None:
+        release = self.release
+        stage = self.stage
+        match release, stage:
+            case Release.alpha, i if isinstance(i, int):
+                ...
+            case Release.beta, i if isinstance(i, int):
+                ...
+            case Release.final, None:
+                ...
+            case _:
+                raise ValueError(f"{release=}, {stage=}")
+
+    def __str__(self) -> OMCVersionString:
+        match self.release, self.stage:
+            case Release.alpha, i:
+                release_stage = f"~dev.alpha{i}"
+            case Release.beta, i:
+                release_stage = f"~dev.beta{i}"
+            case Release.final, None:
+                release_stage = ""
+            case _:
+                raise NotImplementedError()
+
+        return (
             f"{self.major}.{self.minor}.{self.micro}"
-            f"{self.release.omc_repr}-{self.serial}"
+            f"{release_stage}-{self.build}"
         )
 
     @classmethod
@@ -78,31 +84,33 @@ class OMCVersion(Version):
             raise ValueError(
                 f"{s!r} does not match {MODELICA_VERSION_PATTERN.pattern}"
             )
-        match match.groups():
-            case major, minor, micro, _, None, None, serial:
-                return cls(
-                    major=int(major),
-                    minor=int(minor),
-                    micro=int(micro),
-                    serial=int(serial),
-                )
-            case major, minor, micro, _, alpha, None, serial:
-                return cls(
-                    major=int(major),
-                    minor=int(minor),
-                    micro=int(micro),
-                    release=Release(level=Level.alpha, version=int(alpha)),
-                    serial=int(serial),
-                )
-            case major, minor, micro, _, None, beta, serial:
-                return cls(
-                    major=int(major),
-                    minor=int(minor),
-                    micro=int(micro),
-                    release=Release(level=Level.beta, version=int(beta)),
-                    serial=int(serial),
-                )
-        raise NotImplementedError()
+        major = int(match.group("major"))
+        minor = int(match.group("minor"))
+        micro = int(match.group("micro"))
+        release: Release
+        build = int(match.group("build"))
+        stage: int | None
+        match match.group("alpha"), match.group("beta"):
+            case None, None:
+                release = Release.final
+                stage = None
+            case alpha, None:
+                release = Release.alpha
+                stage = int(alpha)
+            case None, beta:
+                release = Release.beta
+                stage = int(beta)
+            case _:
+                raise NotImplementedError()
+
+        return cls(
+            major=major,
+            minor=minor,
+            micro=micro,
+            release=release,
+            stage=stage,
+            build=build,
+        )
 
 
 class SupportsName(Hashable, Protocol):
