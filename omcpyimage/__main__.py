@@ -1,23 +1,23 @@
 from asyncio import gather
-from itertools import product
 
-from . import get_openmodelica_vs_debian, get_python_vs_debian, run_coroutine
-from ._types import Debian, OpenModelica, Python
+from . import get_openmodelica_vs_distro, get_python_vs_debian, run_coroutine
+from ._types import Debian, DistroName, Python
 
 
 @run_coroutine
 async def main() -> None:
-    openmodelica_vs_debian, python_vs_debian = await gather(
-        get_openmodelica_vs_debian(),
-        get_python_vs_debian(),
+    openmodelica_vs_distro = await get_openmodelica_vs_distro(
+        map(DistroName, ["stretch", "buster", "bullseye"])
     )
 
-    for (i, openmodelica), (j, debian) in product(
-        enumerate(OpenModelica), enumerate(Debian)
-    ):
-        patch, build = openmodelica_vs_debian[i, j]
-        if 0 <= patch and 0 <= build:
-            print(f"{openmodelica}-{debian}", patch, build)
+    for (distro_name, _), omc_version in openmodelica_vs_distro.items():
+        print(f"{distro_name=!s}, {omc_version=!s}")
+
+    return
+    openmodelica_vs_distro, python_vs_debian = await gather(
+        get_openmodelica_vs_distro([DistroName("bullseye")]),
+        get_python_vs_debian(),
+    )
 
     for python, row in zip(Python, python_vs_debian):
         for debian, value in zip(Debian, row):

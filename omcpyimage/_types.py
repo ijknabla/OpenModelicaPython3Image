@@ -16,7 +16,7 @@ class Setting(TypedDict):
     distro: list[DistroName]
 
 
-@dataclass(frozen=True)
+@dataclass(order=True, frozen=True)
 class Version:
     major: int
     minor: int
@@ -35,7 +35,7 @@ class Release(enum.Enum):
         return self.value < other.value
 
 
-@dataclass(frozen=True)
+@dataclass(order=True, frozen=True)
 class OMCVersion(Version):
     micro: int
     release: Release
@@ -91,21 +91,6 @@ def _enum2version_tuple(obj: SupportsName) -> tuple[int, int]:
     assert matched is not None
     major, minor = map(int, matched.groups())
     return major, minor
-
-
-class OpenModelica(enum.Enum):
-    v1_13 = enum.auto()
-    v1_14 = enum.auto()
-    v1_15 = enum.auto()
-    v1_16 = enum.auto()
-    v1_17 = enum.auto()
-    v1_18 = enum.auto()
-    v1_19 = enum.auto()
-    v1_20 = enum.auto()
-
-    @property
-    def tuple(self) -> tuple[int, int]:
-        return _enum2version_tuple(self)
 
 
 class Python(enum.Enum):

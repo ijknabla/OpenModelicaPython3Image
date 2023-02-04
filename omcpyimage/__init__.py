@@ -2,19 +2,21 @@ import json
 import re
 from asyncio import create_subprocess_exec, gather, run
 from collections import defaultdict
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Iterable
 from contextlib import AsyncExitStack
-from functools import wraps
+from functools import reduce, wraps
 from itertools import product
+from operator import or_
 from subprocess import PIPE
-from typing import Any, NamedTuple, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 from aiohttp import ClientSession
 from lxml.html import fromstring
-from numpy import array, bool_, int8
+from numpy import array, bool_
 from numpy.typing import NDArray
 
-from ._types import Debian, OpenModelica, Python
+from ._apis import parse_omc_version
+from ._types import Debian, DistroName, OMCVersion, Python, Version
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -33,26 +35,51 @@ def run_coroutine(
     return wrapped
 
 
-async def get_openmodelica_vs_debian() -> NDArray[int8]:
-    category = defaultdict[tuple[int, int, Debian], set[tuple[int, int]]](
-        lambda: {(-1, -1)}
+async def get_openmodelica_vs_distro(
+    distro_names: Iterable[DistroName],
+) -> dict[tuple[DistroName, Version], OMCVersion]:
+    DEB_PATTERN = re.compile(
+        rf"openmodelica_(?P<version>.*?)_{re.escape(ARCHITECTURE)}\.deb"
     )
-    semvers: list[SemanticVersion]
-    for debian, semvers in zip(
-        Debian,
-        await gather(*map(_get_openmodelica_versions, Debian)),
-    ):
-        for semver in semvers:
-            category[(*semver.major_minor, debian)].add(semver.patch_build)
 
-    flat = array(
-        [
-            max(category[*openmodelica.tuple, debian])
-            for openmodelica, debian in product(OpenModelica, Debian)
-        ],
-        dtype=int8,
+    async def get_openmodelica_versions(
+        distro_name: DistroName,
+    ) -> dict[tuple[DistroName, Version], OMCVersion]:
+        uri = f"https://build.openmodelica.org/apt/pool/contrib-{distro_name}/"
+        print(f"Begin {uri}")
+
+        category = defaultdict[Version, set[OMCVersion]](set)
+
+        async with AsyncExitStack() as stack:
+            session = await stack.enter_async_context(ClientSession())
+            response = await stack.enter_async_context(session.get(uri))
+            root = fromstring(await response.read())
+            for match in map(
+                DEB_PATTERN.match,
+                root.xpath(
+                    "//td/a"
+                    '[starts-with(text(), "openmodelica_")]'
+                    f'[contains(text(), "_{ARCHITECTURE}.deb")]'
+                    "/text()"
+                ),
+            ):
+                assert match is not None
+                try:
+                    omc_version = parse_omc_version(match.group("version"))
+                except ValueError:
+                    continue
+                category[omc_version.short].add(omc_version)
+        try:
+            return {
+                (distro_name, version): max(omc_versions)
+                for version, omc_versions in sorted(category.items())
+            }
+        finally:
+            print(f"End {uri}")
+
+    return reduce(
+        or_, await gather(*map(get_openmodelica_versions, distro_names))
     )
-    return flat.reshape([len(OpenModelica), len(Debian), 2])
 
 
 async def get_python_vs_debian() -> NDArray[bool_]:
@@ -66,43 +93,6 @@ async def get_python_vs_debian() -> NDArray[bool_]:
         dtype=bool_,
     )
     return flat.reshape([len(Python), len(Debian)])
-
-
-class SemanticVersion(NamedTuple):
-    major: int
-    minor: int
-    patch: int
-    build: int
-
-    @property
-    def major_minor(self) -> tuple[int, int]:
-        return self.major, self.minor
-
-    @property
-    def patch_build(self) -> tuple[int, int]:
-        return self.patch, self.build
-
-
-async def _get_openmodelica_versions(
-    debian: Debian,
-) -> list[SemanticVersion]:
-    result = list[SemanticVersion]()
-    uri = f"https://build.openmodelica.org/apt/pool/contrib-{debian}/"
-    async with AsyncExitStack() as stack:
-        session = await stack.enter_async_context(ClientSession())
-        response = await stack.enter_async_context(session.get(uri))
-        root = fromstring(await response.read())
-        for a in root.xpath("//td/a"):
-            match = re.match(
-                (
-                    r"^openmodelica_(\d+)\.(\d+).(\d+)\-(\d+)"
-                    rf"_{ARCHITECTURE}\.deb$"
-                ),
-                a.text,
-            )
-            if match is not None:
-                result.append(SemanticVersion(*map(int, match.groups())))
-    return result
 
 
 async def _exists_in_dockerhub(
