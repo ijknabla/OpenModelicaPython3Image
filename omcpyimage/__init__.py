@@ -71,7 +71,9 @@ async def get_openmodelica_vs_distro(
                 category[omc_version.short].add(omc_version)
         try:
             return {
-                (distro_name, version): max(omc_versions)
+                (distro_name, version): max(
+                    omc_versions, key=lambda v: (v.release, v)
+                )
                 for version, omc_versions in sorted(category.items())
             }
         finally:
