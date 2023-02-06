@@ -21,3 +21,39 @@ exists = false
 [py-images."python:3.11-buster"]
 updated_at = 2023-02-06T17:04:32.847953
 exists = true
+
+[py-images."python:3.8-stretch"]
+updated_at = 2023-02-06T17:06:50.552341
+exists = false
+
+[py-images."python:3.8-buster"]
+updated_at = 2023-02-06T17:06:56.532923
+exists = true
+
+[py-images."python:3.8-bullseye"]
+updated_at = 2023-02-06T17:07:02.640547
+exists = true
+
+[py-images."python:3.9-stretch"]
+updated_at = 2023-02-06T17:07:08.276957
+exists = false
+
+[py-images."python:3.9-buster"]
+updated_at = 2023-02-06T17:07:13.992903
+exists = true
+
+[py-images."python:3.9-bullseye"]
+updated_at = 2023-02-06T17:07:23.995333
+exists = true
+
+[py-images."python:3.10-stretch"]
+updated_at = 2023-02-06T17:07:36.358397
+exists = false
+
+[py-images."python:3.10-buster"]
+updated_at = 2023-02-06T17:07:42.130603
+exists = true
+
+[py-images."python:3.10-bullseye"]
+updated_at = 2023-02-06T17:07:47.879607
+exists = true
