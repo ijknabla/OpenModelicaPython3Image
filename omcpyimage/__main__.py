@@ -1,5 +1,5 @@
 import logging
-from asyncio import Event, gather
+from asyncio import Event, create_task, gather
 from collections import defaultdict
 from contextlib import ExitStack
 from dataclasses import dataclass, field
@@ -20,6 +20,8 @@ from . import (
 )
 from ._apis import is_config, iter_debian, iter_omc, iter_py
 from ._types import Debian, OMCPackage, Python, Verbosity, Version
+
+logger = logging.getLogger(__name__)
 
 
 def verbosity_from_count(count: int) -> Verbosity:
@@ -149,9 +151,13 @@ class Setup:
                     for uri in omc_package_uris[key]
                 )
             )
+            version, debian = key
+            Verbosity.SLIGHTLY_VERBOSE.log(
+                logger, f"All *.deb files for omc{version}-{debian} downloaded"
+            )
             self.__omc_package_events[key].set()
 
-        await gather(*map(_download, omc_package_uris))
+        [create_task(_download(key)) for key in omc_package_uris]
 
     async def __get_omc_packages(self) -> OMCPackages:
         await self.__omc_packages_ready.wait()
