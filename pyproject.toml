@@ -43,6 +43,11 @@ exclude = ".venv"
 profile = "black"
 line_length = 79
 
+[tool.mypy]
+exclude = [
+    "^\\.venv/",
+]
+
 [[tool.mypy.overrides]]
 module = [
     "lxml.*",
