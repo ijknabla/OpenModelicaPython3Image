@@ -1,4 +1,5 @@
 import re
+from collections.abc import Iterator
 from functools import lru_cache
 from typing import Any
 
@@ -110,3 +111,8 @@ def parse_omc_version(s: OMCVersionString) -> OMCVersion:
 @lru_cache(1)
 def _debian_name_schema() -> Schema:
     return Schema(Debian.is_valid_name)
+
+
+def iter_debian(config: Config) -> Iterator[Debian]:
+    for key in config["debian"]:
+        yield Debian[key]

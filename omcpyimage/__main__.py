@@ -5,8 +5,8 @@ import click
 import toml
 
 from . import get_openmodelica_vs_debian, get_python_vs_debian, run_coroutine
-from ._apis import is_config
-from ._types import Debian, DebianName, Python
+from ._apis import is_config, iter_debian
+from ._types import Debian, Python
 
 
 @click.command
@@ -18,14 +18,16 @@ async def main(
     config = toml.load(config_io)
     assert is_config(config)
 
-    openmodelica_vs_debian = await get_openmodelica_vs_debian(config["debian"])
+    openmodelica_vs_debian = await get_openmodelica_vs_debian(
+        iter_debian(config)
+    )
 
-    for (distro_name, _), omc_version in openmodelica_vs_debian.items():
-        print(f"{distro_name=!s}, {omc_version=!s}")
+    for (debian, _), omc_version in openmodelica_vs_debian.items():
+        print(f"{debian=!s}, {omc_version=!s}")
 
     return
     openmodelica_vs_debian, python_vs_debian = await gather(
-        get_openmodelica_vs_debian([DebianName("bullseye")]),
+        get_openmodelica_vs_debian([Debian("bullseye")]),
         get_python_vs_debian(),
     )
 

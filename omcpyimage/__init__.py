@@ -16,7 +16,7 @@ from numpy import array, bool_
 from numpy.typing import NDArray
 
 from ._apis import parse_omc_version
-from ._types import Debian, DebianName, OMCVersion, Python, Version
+from ._types import Debian, OMCVersion, Python, Version
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -36,16 +36,16 @@ def run_coroutine(
 
 
 async def get_openmodelica_vs_debian(
-    distro_names: Iterable[DebianName],
-) -> dict[tuple[DebianName, Version], OMCVersion]:
+    debians: Iterable[Debian],
+) -> dict[tuple[Debian, Version], OMCVersion]:
     DEB_PATTERN = re.compile(
         rf"openmodelica_(?P<version>.*?)_{re.escape(ARCHITECTURE)}\.deb"
     )
 
     async def get_openmodelica_versions(
-        distro_name: DebianName,
-    ) -> dict[tuple[DebianName, Version], OMCVersion]:
-        uri = f"https://build.openmodelica.org/apt/pool/contrib-{distro_name}/"
+        debian: Debian,
+    ) -> dict[tuple[Debian, Version], OMCVersion]:
+        uri = f"https://build.openmodelica.org/apt/pool/contrib-{debian}/"
         print(f"Begin {uri}")
 
         category = defaultdict[Version, set[OMCVersion]](set)
@@ -71,7 +71,7 @@ async def get_openmodelica_vs_debian(
                 category[omc_version.short].add(omc_version)
         try:
             return {
-                (distro_name, version): max(
+                (debian, version): max(
                     omc_versions, key=lambda v: (v.release, v)
                 )
                 for version, omc_versions in sorted(category.items())
@@ -79,9 +79,7 @@ async def get_openmodelica_vs_debian(
         finally:
             print(f"End {uri}")
 
-    return reduce(
-        or_, await gather(*map(get_openmodelica_versions, distro_names))
-    )
+    return reduce(or_, await gather(*map(get_openmodelica_versions, debians)))
 
 
 async def get_python_vs_debian() -> NDArray[bool_]:
