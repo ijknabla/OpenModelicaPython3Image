@@ -1,8 +1,9 @@
 import logging
-from asyncio import Event, create_task, gather
+from asyncio import Event, create_task, gather, sleep
 from collections import defaultdict
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from datetime import datetime
 from itertools import product
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -183,12 +184,41 @@ class Setup:
         assert self.__omc_packages is not None
         return self.__omc_packages
 
+    async def __get_py_images(self) -> set[tuple[Version, Debian]]:
+        result = set[tuple[Version, Debian]]()
+
+        self.cache["py-images"] = self.cache.get("py-images", {})
+        py_images_cache = self.cache["py-images"]
+        for py, debian in product(self.py_short_versions, self.debians):
+            key = f"python:{py}-{debian}"
+            if key not in py_images_cache:
+                query = (
+                    "https://hub.docker.com/_/python/"
+                    f"tags?name={py}-{debian} [y/N] "
+                )
+                exists = None
+                while exists is None:
+                    await sleep(0.0)
+                    match input(query).strip():
+                        case "y":
+                            exists = True
+                        case "N":
+                            exists = False
+                py_images_cache[key] = dict(
+                    updated_at=datetime.utcnow(),
+                    exists=exists,
+                )
+
+            if py_images_cache[key]["exists"]:
+                result.add((py, debian))
+        return result
+
     async def __docker_build(self, directory: Path) -> None:
-        return
         omc_packages, py_dockers = await gather(
             self.__get_omc_packages(),
-            get_python_vs_debian(self.py_short_versions, self.debians),
+            self.__get_py_images(),
         )
+        return
 
         resolved = [
             (omc, py, debian)
