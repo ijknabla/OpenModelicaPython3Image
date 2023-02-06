@@ -2,6 +2,7 @@ from asyncio import Event, gather
 from collections import defaultdict
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from itertools import product
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import IO
@@ -87,7 +88,10 @@ class Setup:
         with ExitStack() as stack:
             if directory is None:
                 directory = Path(stack.enter_context(TemporaryDirectory()))
-            await gather(self.__download_omc_packages(directory))
+            await gather(
+                self.__download_omc_packages(directory),
+                self.__docker_build(directory),
+            )
 
     def __get_destination(
         self, debian: Debian, uri: str, directory: Path
@@ -135,6 +139,25 @@ class Setup:
         await self.__omc_packages_ready.wait()
         assert self.__omc_packages is not None
         return self.__omc_packages
+
+    async def __docker_build(self, directory: Path) -> None:
+        omc_packages, py_dockers = await gather(
+            self.__get_omc_packages(),
+            get_python_vs_debian(self.py_short_versions, self.debians),
+        )
+
+        resolved = [
+            (omc, py, debian)
+            for omc, py, debian in product(
+                self.omc_short_versions,
+                self.py_short_versions,
+                self.debians,
+            )
+            if (omc, debian) in omc_packages and (py, debian) in py_dockers
+        ]
+
+        for omc, py, debian in resolved:
+            print(f"ijknabla/openmodelica:omc{omc}-py{py}-{debian}")
 
 
 if __name__ == "__main__":

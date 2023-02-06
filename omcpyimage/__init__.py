@@ -14,11 +14,9 @@ from typing import Any, ParamSpec, TypeVar
 
 from aiohttp import ClientSession
 from lxml.html import fromstring
-from numpy import array, bool_
-from numpy.typing import NDArray
 
 from ._apis import parse_omc_version
-from ._types import Debian, OMCVersion, Python, Version
+from ._types import Debian, OMCVersion, Version
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -84,21 +82,27 @@ async def get_openmodelica_vs_debian(
     return reduce(or_, await gather(*map(get_openmodelica_versions, debians)))
 
 
-async def get_python_vs_debian() -> NDArray[bool_]:
-    flat = array(
-        await gather(
-            *(
-                _exists_in_dockerhub(python=p, debian=d)
-                for p, d in product(Python, Debian)
-            )
-        ),
-        dtype=bool_,
+async def get_python_vs_debian(
+    py_short_versions: Iterable[Version], debian: Iterable[Debian]
+) -> set[tuple[Version, Debian]]:
+    keys = tuple(product(py_short_versions, debian))
+    return set(
+        key
+        for key, exists in zip(
+            keys,
+            await gather(
+                *(
+                    _exists_in_dockerhub(version, debian)
+                    for version, debian in keys
+                )
+            ),
+        )
+        if exists
     )
-    return flat.reshape([len(Python), len(Debian)])
 
 
 async def _exists_in_dockerhub(
-    python: Python,
+    python: Version,
     debian: Debian,
 ) -> bool:
     process = await create_subprocess_exec(
