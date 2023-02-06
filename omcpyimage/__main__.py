@@ -68,8 +68,8 @@ async def main(
             print(f"{python}-{debians}", value)
 
 
-OMCPackageURIs = dict[tuple[Version, Debian], tuple[str, ...]]
-OMCPackageDownloadedEvents = defaultdict[tuple[Version, Debian], Event]
+OMCPackages = dict[tuple[Version, Debian], tuple[Path, ...]]
+OMCPackageEvents = defaultdict[tuple[Version, Debian], Event]
 
 
 @dataclass
@@ -77,10 +77,10 @@ class Setup:
     omc_short_versions: tuple[Version, ...]
     py_short_versions: tuple[Version, ...]
     debians: tuple[Debian, ...]
-    __omc_package_uris: OMCPackageURIs | None = field(default=None, init=False)
-    __omc_package_uris_ready: Event = field(default_factory=Event, init=False)
-    __omc_package_downloaded_events: OMCPackageDownloadedEvents = field(
-        default_factory=lambda: OMCPackageDownloadedEvents(Event), init=False
+    __omc_packages: OMCPackages | None = field(default=None, init=False)
+    __omc_packages_ready: Event = field(default_factory=Event, init=False)
+    __omc_package_events: OMCPackageEvents = field(
+        default_factory=lambda: OMCPackageEvents(Event), init=False
     )
 
     async def run(self, directory: Path | None) -> None:
@@ -106,26 +106,35 @@ class Setup:
             ).items()
             if omc_short_version in self.omc_short_versions
         }
-        self.__omc_package_uris = omc_package_uris
-        self.__omc_package_uris_ready.set()
+        omc_packages = {
+            (omc_short_version, debian): tuple(
+                self.__get_destination(debian, uri, directory) for uri in uris
+            )
+            for (omc_short_version, debian), uris in omc_package_uris.items()
+        }
+
+        self.__omc_packages = omc_packages
+        self.__omc_packages_ready.set()
 
         async def _download(key: tuple[Version, Debian]) -> None:
             await gather(
                 *(
-                    download(
-                        uri, self.__get_destination(key[1], uri, directory)
+                    download(uri, dst)
+                    for uri, dst in zip(
+                        omc_package_uris[key],
+                        omc_packages[key],
                     )
                     for uri in omc_package_uris[key]
                 )
             )
-            self.__omc_package_downloaded_events[key].set()
+            self.__omc_package_events[key].set()
 
-        await gather(*map(_download, self.__omc_package_uris))
+        await gather(*map(_download, omc_package_uris))
 
-    async def __get_omc_package_uris(self) -> OMCPackageURIs:
-        await self.__omc_package_uris_ready.wait()
-        assert self.__omc_package_uris is not None
-        return self.__omc_package_uris
+    async def __get_omc_packages(self) -> OMCPackages:
+        await self.__omc_packages_ready.wait()
+        assert self.__omc_packages is not None
+        return self.__omc_packages
 
 
 if __name__ == "__main__":
