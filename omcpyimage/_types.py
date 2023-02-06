@@ -5,15 +5,15 @@ from dataclasses import dataclass
 from functools import lru_cache, total_ordering
 from typing import NewType, Protocol, TypedDict
 
-DistroName = NewType("DistroName", str)
+DebianName = NewType("DebianName", str)
 OMCVersionString = str
 VersionString = str
 
 
-class Setting(TypedDict):
-    py: list[VersionString]
+class Config(TypedDict):
     omc: list[VersionString]
-    distro: list[DistroName]
+    py: list[VersionString]
+    debian: list[DebianName]
 
 
 @dataclass(order=True, frozen=True)
@@ -104,6 +104,10 @@ class Debian(enum.Enum):
     stretch = enum.auto()
     buster = enum.auto()
     bullseye = enum.auto()
+
+    @classmethod
+    def is_valid_name(cls, name: DebianName) -> bool:
+        return name in cls._member_map_
 
     def __str__(self) -> str:
         assert isinstance(self.name, str)

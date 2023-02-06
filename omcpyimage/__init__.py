@@ -16,7 +16,7 @@ from numpy import array, bool_
 from numpy.typing import NDArray
 
 from ._apis import parse_omc_version
-from ._types import Debian, DistroName, OMCVersion, Python, Version
+from ._types import Debian, DebianName, OMCVersion, Python, Version
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -35,16 +35,16 @@ def run_coroutine(
     return wrapped
 
 
-async def get_openmodelica_vs_distro(
-    distro_names: Iterable[DistroName],
-) -> dict[tuple[DistroName, Version], OMCVersion]:
+async def get_openmodelica_vs_debian(
+    distro_names: Iterable[DebianName],
+) -> dict[tuple[DebianName, Version], OMCVersion]:
     DEB_PATTERN = re.compile(
         rf"openmodelica_(?P<version>.*?)_{re.escape(ARCHITECTURE)}\.deb"
     )
 
     async def get_openmodelica_versions(
-        distro_name: DistroName,
-    ) -> dict[tuple[DistroName, Version], OMCVersion]:
+        distro_name: DebianName,
+    ) -> dict[tuple[DebianName, Version], OMCVersion]:
         uri = f"https://build.openmodelica.org/apt/pool/contrib-{distro_name}/"
         print(f"Begin {uri}")
 

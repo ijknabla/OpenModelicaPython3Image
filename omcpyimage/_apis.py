@@ -6,19 +6,20 @@ from schema import And, Schema
 
 from ._decorators import schema2checker
 from ._types import (
-    DistroName,
+    Config,
+    Debian,
+    DebianName,
     OMCVersion,
     OMCVersionString,
     Release,
-    Setting,
     Version,
     VersionString,
 )
 
 
-@schema2checker(Any, Setting)
-def is_setting() -> Schema:
-    return _setting_schema()
+@schema2checker(Any, Config)
+def is_config() -> Schema:
+    return _config_schema()
 
 
 @schema2checker(Any, VersionString)
@@ -26,18 +27,18 @@ def is_short_version_string() -> Schema:
     return _short_version_string_schema()
 
 
-@schema2checker(Any, DistroName)
-def is_distro_name() -> Schema:
-    return _distro_name_schema()
+@schema2checker(Any, DebianName)
+def is_debian_name() -> Schema:
+    return _debian_name_schema()
 
 
 @lru_cache(1)
-def _setting_schema() -> Schema:
+def _config_schema() -> Schema:
     return Schema(
         {
-            "py": And([_short_version_string_schema()], len),
             "omc": And([_short_version_string_schema()], len),
-            "distro": And([_distro_name_schema()], len),
+            "py": And([_short_version_string_schema()], len),
+            "debian": And([_debian_name_schema()], len),
         }
     )
 
@@ -51,8 +52,9 @@ def parse_version(s: VersionString) -> Version:
         raise ValueError(
             f"{s!r} does not match {SHORT_VERSION_PATTERN.pattern}"
         )
-    major, minor = match.groups()
-    return Version(major=int(major), minor=int(minor))
+    major = int(match.group("major"))
+    minor = int(match.group("minor"))
+    return Version(major=major, minor=minor)
 
 
 @lru_cache(1)
@@ -106,5 +108,5 @@ def parse_omc_version(s: OMCVersionString) -> OMCVersion:
 
 
 @lru_cache(1)
-def _distro_name_schema() -> Schema:
-    return Schema(And(str, len))
+def _debian_name_schema() -> Schema:
+    return Schema(Debian.is_valid_name)
