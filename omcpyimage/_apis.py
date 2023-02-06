@@ -113,6 +113,16 @@ def _debian_name_schema() -> Schema:
     return Schema(Debian.is_valid_name)
 
 
+def iter_omc(config: Config) -> Iterator[Version]:
+    for version in config["omc"]:
+        yield parse_version(version)
+
+
+def iter_py(config: Config) -> Iterator[Version]:
+    for version in config["py"]:
+        yield parse_version(version)
+
+
 def iter_debian(config: Config) -> Iterator[Debian]:
     for key in config["debian"]:
         yield Debian[key]
