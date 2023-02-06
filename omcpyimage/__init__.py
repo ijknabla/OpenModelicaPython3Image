@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from asyncio import create_subprocess_exec, gather, run, sleep
@@ -16,7 +17,9 @@ from aiohttp import ClientSession
 from lxml.html import fromstring
 
 from ._apis import parse_omc_version
-from ._types import Debian, OMCVersion, Version
+from ._types import Debian, OMCVersion, Verbosity, Version
+
+logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -46,14 +49,16 @@ async def get_openmodelica_vs_debian(
         debian: Debian,
     ) -> dict[tuple[Debian, Version], OMCVersion]:
         uri = f"https://build.openmodelica.org/apt/pool/contrib-{debian}/"
-        print(f"Begin {uri}")
-
         category = defaultdict[Version, set[OMCVersion]](set)
 
+        Verbosity.SLIGHTLY_VERBOSE.log(logger, f"({debian}) Download {uri}")
         async with AsyncExitStack() as stack:
             session = await stack.enter_async_context(ClientSession())
             response = await stack.enter_async_context(session.get(uri))
             root = fromstring(await response.read())
+            Verbosity.VERBOSE.log(
+                logger, f"({debian}) Download {uri} completed!"
+            )
             for match in map(
                 DEB_PATTERN.match,
                 root.xpath(
@@ -66,18 +71,28 @@ async def get_openmodelica_vs_debian(
                 assert match is not None
                 try:
                     omc_version = parse_omc_version(match.group("version"))
+                    Verbosity.VERBOSE.log(
+                        logger,
+                        (
+                            f"({debian}) Extract omc{str(omc_version):<18} "
+                            f"from {match.group(0)}"
+                        ),
+                    )
                 except ValueError:
                     continue
                 category[omc_version.short].add(omc_version)
-        try:
-            return {
-                (debian, version): max(
-                    omc_versions, key=lambda v: (v.release, v)
-                )
-                for version, omc_versions in sorted(category.items())
-            }
-        finally:
-            print(f"End {uri}")
+
+        Verbosity.SLIGHTLY_VERBOSE.log(
+            logger,
+            (
+                f"({debian}) Extract #{sum(map(len, category.values()))} "
+                f"omc versions from {uri}"
+            ),
+        )
+        return {
+            (debian, version): max(omc_versions, key=lambda v: (v.release, v))
+            for version, omc_versions in sorted(category.items())
+        }
 
     return reduce(or_, await gather(*map(get_openmodelica_versions, debians)))
 
