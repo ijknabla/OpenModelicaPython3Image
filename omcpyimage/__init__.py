@@ -11,7 +11,6 @@ from operator import or_
 from pathlib import Path
 from subprocess import PIPE
 from typing import Any, ParamSpec, TypeVar
-from urllib.parse import urlparse
 
 from aiohttp import ClientSession
 from lxml.html import fromstring
@@ -19,7 +18,7 @@ from numpy import array, bool_
 from numpy.typing import NDArray
 
 from ._apis import parse_omc_version
-from ._types import Debian, OMCPackage, OMCVersion, Python, Version
+from ._types import Debian, OMCVersion, Python, Version
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -126,11 +125,7 @@ async def _exists_in_dockerhub(
         raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
 
 
-async def download_omc_package(
-    omc_package: OMCPackage, debian: Debian, version: OMCVersion, path: Path
-) -> None:
-    uri = omc_package.get_uri(debian, version)
-    dst = path / f"{debian}" / Path(urlparse(uri).path).name
+async def download(uri: str, dst: Path) -> None:
     if dst.exists():
         return
     os.makedirs(dst.parent, exist_ok=True)
