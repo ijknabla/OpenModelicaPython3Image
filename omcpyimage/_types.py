@@ -4,6 +4,7 @@ import re
 from collections.abc import Hashable
 from dataclasses import dataclass
 from functools import lru_cache, total_ordering
+from logging import Logger
 from typing import NewType, Protocol, TypedDict
 
 DebianName = NewType("DebianName", str)
@@ -15,6 +16,9 @@ class Verbosity(enum.Enum):
     SILENT = logging.WARNING
     SLIGHTLY_VERBOSE = logging.INFO
     VERBOSE = logging.DEBUG
+
+    def log(self, logger: Logger, message: str) -> None:
+        logger.log(self.value, message)
 
 
 class Config(TypedDict):
