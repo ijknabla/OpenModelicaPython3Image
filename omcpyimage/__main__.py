@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from itertools import product
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import IO
+from typing import IO, Any
 from urllib.parse import urlparse
 
 import click
@@ -40,6 +40,11 @@ def verbosity_from_count(count: int) -> Verbosity:
 @click.command
 @click.argument("config_io", metavar="CONFIG.TOML", type=click.File("r"))
 @click.option(
+    "--cache",
+    "cache_path",
+    type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
+)
+@click.option(
     "--directory",
     type=click.Path(
         exists=True, file_okay=False, dir_okay=True, path_type=Path
@@ -51,17 +56,30 @@ def verbosity_from_count(count: int) -> Verbosity:
 @run_coroutine
 async def main(
     config_io: IO[str],
+    cache_path: Path | None,
     directory: Path | None,
     verbosity: Verbosity,
 ) -> None:
     config = toml.load(config_io)
     assert is_config(config)
 
-    await Setup(
-        omc_short_versions=tuple(iter_omc(config)),
-        py_short_versions=tuple(iter_py(config)),
-        debians=tuple(iter_debian(config)),
-    ).run(directory)
+    if cache_path is not None and cache_path.exists():
+        with cache_path.open("r", encoding="utf-8") as f:
+            cache = toml.load(f)
+    else:
+        cache = {}
+
+    try:
+        await Setup(
+            omc_short_versions=tuple(iter_omc(config)),
+            py_short_versions=tuple(iter_py(config)),
+            debians=tuple(iter_debian(config)),
+            cache=cache,
+        ).run(directory)
+    finally:
+        if cache_path is not None:
+            with cache_path.open("w", encoding="utf-8") as f:
+                toml.dump(cache, f)
 
     return
 
@@ -98,6 +116,7 @@ class Setup:
     omc_short_versions: tuple[Version, ...]
     py_short_versions: tuple[Version, ...]
     debians: tuple[Debian, ...]
+    cache: Any
     __omc_packages: OMCPackages | None = field(default=None, init=False)
     __omc_packages_ready: Event = field(default_factory=Event, init=False)
     __omc_package_events: OMCPackageEvents = field(
