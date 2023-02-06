@@ -1,3 +1,4 @@
+import logging
 from asyncio import Event, gather
 from collections import defaultdict
 from contextlib import ExitStack
@@ -18,7 +19,20 @@ from . import (
     run_coroutine,
 )
 from ._apis import is_config, iter_debian, iter_omc, iter_py
-from ._types import Debian, OMCPackage, Python, Version
+from ._types import Debian, OMCPackage, Python, Verbosity, Version
+
+
+def verbosity_from_count(count: int) -> Verbosity:
+    count = min(len(Verbosity), max(0, count))
+    for i, verbosity in enumerate(Verbosity):
+        if i == count:
+            break
+    else:
+        raise NotImplementedError()
+
+    logging.root.addHandler(logging.StreamHandler())
+    logging.root.setLevel(verbosity.value)
+    return verbosity
 
 
 @click.command
@@ -29,10 +43,14 @@ from ._types import Debian, OMCPackage, Python, Version
         exists=True, file_okay=False, dir_okay=True, path_type=Path
     ),
 )
+@click.option(
+    "-v", "--verbose", "verbosity", count=True, type=verbosity_from_count
+)
 @run_coroutine
 async def main(
     config_io: IO[str],
     directory: Path | None,
+    verbosity: Verbosity,
 ) -> None:
     config = toml.load(config_io)
     assert is_config(config)
@@ -141,6 +159,7 @@ class Setup:
         return self.__omc_packages
 
     async def __docker_build(self, directory: Path) -> None:
+        return
         omc_packages, py_dockers = await gather(
             self.__get_omc_packages(),
             get_python_vs_debian(self.py_short_versions, self.debians),

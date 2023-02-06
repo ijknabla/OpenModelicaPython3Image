@@ -1,4 +1,5 @@
 import enum
+import logging
 import re
 from collections.abc import Hashable
 from dataclasses import dataclass
@@ -8,6 +9,12 @@ from typing import NewType, Protocol, TypedDict
 DebianName = NewType("DebianName", str)
 OMCVersionString = str
 VersionString = str
+
+
+class Verbosity(enum.Enum):
+    SILENT = logging.WARNING
+    SLIGHTLY_VERBOSE = logging.INFO
+    VERBOSE = logging.DEBUG
 
 
 class Config(TypedDict):
