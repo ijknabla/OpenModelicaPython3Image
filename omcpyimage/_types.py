@@ -108,3 +108,10 @@ class Debian(enum.Enum):
     def __str__(self) -> str:
         assert isinstance(self.name, str)
         return self.name
+
+
+class OMCPackage(enum.Enum):
+    libomc = enum.auto()
+    libomcsimulation = enum.auto()
+    omc = enum.auto()
+    omc_common = enum.auto()
