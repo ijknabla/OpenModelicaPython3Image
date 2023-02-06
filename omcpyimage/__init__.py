@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from asyncio import create_subprocess_exec, gather, run
+from asyncio import create_subprocess_exec, gather, run, sleep
 from collections import defaultdict
 from collections.abc import Callable, Coroutine, Iterable
 from contextlib import AsyncExitStack
@@ -125,6 +125,10 @@ async def _exists_in_dockerhub(
         return True
     elif re.match(rb"^no\s*such\s*manifest\s*:", err):
         return False
+    elif re.match(rb"^toomanyrequests:", err):
+        print(err)
+        await sleep(2 * 60)
+        return await _exists_in_dockerhub(python, debian)
     else:
         raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
 
