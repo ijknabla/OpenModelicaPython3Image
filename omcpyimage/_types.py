@@ -119,3 +119,20 @@ class OMCPackage(enum.Enum):
     libomcsimulation = enum.auto()
     omc = enum.auto()
     omc_common = enum.auto()
+
+    def __str__(self) -> str:
+        assert isinstance(self.name, str)
+        return self.name.replace("_", "-")
+
+    @property
+    def architecture(self) -> str:
+        if self is OMCPackage.omc_common:
+            return "all"
+        else:
+            return "amd64"
+
+    def get_uri(self, debian: Debian, version: OMCVersion) -> str:
+        return (
+            f"https://build.openmodelica.org/apt/pool/contrib-{debian}/"
+            f"{self}_{version}_{self.architecture}.deb"
+        )

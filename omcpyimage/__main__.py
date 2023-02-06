@@ -6,7 +6,7 @@ import toml
 
 from . import get_openmodelica_vs_debian, get_python_vs_debian, run_coroutine
 from ._apis import is_config, iter_debian
-from ._types import Debian, Python
+from ._types import Debian, OMCPackage, Python
 
 
 @click.command
@@ -23,7 +23,8 @@ async def main(
     )
 
     for (debian, _), omc_version in openmodelica_vs_debian.items():
-        print(f"{debian=!s}, {omc_version=!s}")
+        for omc_package in OMCPackage:
+            print(f"{omc_package.get_uri(debian, omc_version)}")
 
     return
     openmodelica_vs_debian, python_vs_debian = await gather(
