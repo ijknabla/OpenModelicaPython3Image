@@ -69,7 +69,7 @@ def _short_version_string_schema() -> Schema:
 MODELICA_VERSION_PATTERN = re.compile(
     r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)"
     r"(~dev\.alpha(?P<alpha>\d+)|~dev\.beta(?P<beta>\d+)|)"
-    r"\-(?P<build>\d+)"
+    r"\-(?P<build>\d+)$"
 )
 
 
