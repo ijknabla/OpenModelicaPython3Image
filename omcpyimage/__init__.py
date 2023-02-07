@@ -36,10 +36,8 @@ class ImageBuilder:
     config: Config
 
     async def build(self) -> None:
-        async for (
-            omc_long_version,
-            debian,
-        ) in self.iter_available_omc_versions():
+        omc_long_versions = await self.get_omc_long_versions()
+        for (_, debian), omc_long_version in omc_long_versions.items():
             print(omc_long_version, debian)
 
     @property
@@ -53,6 +51,22 @@ class ImageBuilder:
     @property
     def debians(self) -> list[Debian]:
         return [Debian[debian] for debian in self.config["debian"]]
+
+    async def get_omc_long_versions(
+        self,
+    ) -> dict[tuple[Version, Debian], LongVersion]:
+        category = defaultdict[tuple[Version, Debian], set[LongVersion]](set)
+        async for (
+            long_version,
+            debian,
+        ) in self.iter_available_omc_versions():
+            version = long_version.as_short
+            category[(version, debian)].add(long_version)
+
+        return {
+            (version, debian): max(long_versions)
+            for (version, debian), long_versions in sorted(category.items())
+        }
 
     async def iter_available_omc_versions(
         self,
