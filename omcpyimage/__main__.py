@@ -1,12 +1,20 @@
 from asyncio import gather
 from itertools import product
+from typing import IO
+
+import click
 
 from . import get_openmodelica_vs_debian, get_python_vs_debian, run_coroutine
 from ._types import Debian, OpenModelica, Python
 
 
+@click.command
+@click.argument("config_io", metavar="CONFIG.TOML", type=click.File("r"))
 @run_coroutine
-async def main() -> None:
+async def main(
+    config_io: IO[str],
+) -> None:
+    return
     openmodelica_vs_debian, python_vs_debian = await gather(
         get_openmodelica_vs_debian(),
         get_python_vs_debian(),
