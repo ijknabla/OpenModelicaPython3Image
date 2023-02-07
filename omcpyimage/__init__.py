@@ -1,21 +1,31 @@
 import json
 import re
-from asyncio import create_subprocess_exec, gather, run
+from asyncio import (
+    FIRST_COMPLETED,
+    Queue,
+    Task,
+    create_subprocess_exec,
+    create_task,
+    gather,
+    run,
+    wait,
+)
 from collections import defaultdict
-from collections.abc import Callable, Coroutine
+from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
-from functools import wraps
+from functools import partial, wraps
 from itertools import product
 from subprocess import PIPE
 from typing import Any, NamedTuple, ParamSpec, TypeVar
 
 from aiohttp import ClientSession
-from lxml.html import fromstring
+from lxml.html import HtmlElement, fromstring
 from numpy import array, bool_, int8
 from numpy.typing import NDArray
 
-from ._types import Config, Debian, OpenModelica, Python
+from ._api import is_debian, is_long_version
+from ._types import Config, Debian, LongVersion, OpenModelica, Python, Version
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -25,8 +35,94 @@ T = TypeVar("T")
 class ImageBuilder:
     config: Config
 
+    @property
+    def omc_versions(self) -> list[Version]:
+        return list(map(Version.parse, self.config["omc"]))
+
+    @property
+    def py_versions(self) -> list[Version]:
+        return list(map(Version.parse, self.config["py"]))
+
+    @property
+    def debians(self) -> list[Debian]:
+        return [Debian[debian] for debian in self.config["debian"]]
+
+    async def iter_available_omc_versions(
+        self,
+    ) -> AsyncIterator[tuple[LongVersion, Debian]]:
+        releases_uri = (
+            "https://build.openmodelica.org/omc/builds/linux/releases/"
+        )
+        omc_versions = set(self.omc_versions)
+
+        queue = Queue[tuple[LongVersion, Debian]]()
+
+        async def put(v: LongVersion, d: Debian) -> None:
+            await queue.put((v, d))
+
+        tasks = list[Task[None]]()
+        async with ClientSession() as session:
+            releases = await download_tree(session, uri=f"{releases_uri}")
+            for href in releases.xpath("//a/@href"):
+                if not (is_long_version(href[:-1]) and href[-1] == "/"):
+                    continue
+                long_version = LongVersion.parse(href[:-1])
+                if long_version.as_short not in omc_versions:
+                    continue
+                tasks.append(
+                    create_task(
+                        self.put_available_omc_versions(
+                            partial(put, long_version),
+                            uri=f"{releases_uri}{href}dists/",
+                        )
+                    )
+                )
+
+        async def stop_iteration() -> None:
+            await gather(*tasks)
+            await queue.join()
+
+        while True:
+            get = create_task(queue.get())
+            done, _ = await wait(
+                [get, create_task(stop_iteration())],
+                return_when=FIRST_COMPLETED,
+            )
+            if get in done:
+                try:
+                    yield get.result()
+                finally:
+                    queue.task_done()
+            else:
+                return
+
+    async def put_available_omc_versions(
+        self,
+        put: Callable[[Debian], Coroutine[Any, Any, None]],
+        uri: str,
+    ) -> None:
+        debians = set(self.debians)
+        async with ClientSession() as session:
+            dists = await download_tree(session, uri=f"{uri}")
+            for href in dists.xpath("//a/@href"):
+                if not (is_debian(href[:-1]) and href[-1] == "/"):
+                    continue
+                debian = Debian[href[:-1]]
+                if debian not in debians:
+                    continue
+                await put(debian)
+
     async def build(self) -> None:
-        return
+        async for (
+            omc_long_version,
+            debian,
+        ) in self.iter_available_omc_versions():
+            print(omc_long_version, debian)
+
+
+async def download_tree(session: ClientSession, uri: str) -> HtmlElement:
+    async with session.get(uri) as response:
+        return fromstring(await response.read())
 
 
 ARCHITECTURE = "amd64"

@@ -4,7 +4,7 @@ from collections.abc import Hashable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache, total_ordering
-from typing import ClassVar, Protocol, TypedDict
+from typing import ClassVar, Protocol, Type, TypedDict, TypeVar
 
 
 class Config(TypedDict):
@@ -18,6 +18,9 @@ Cache = TypedDict("Cache", {"py-images": dict[str, "PyImageCache"]})
 PyImageCache = TypedDict(
     "PyImageCache", {"update-at": datetime, "exists": bool}
 )
+
+
+T_version = TypeVar("T_version", bound="Version")
 
 
 @dataclass(frozen=True, order=True)
@@ -37,7 +40,7 @@ class Version:
         return ".".join(map(str, self))
 
     @classmethod
-    def parse(cls, s: str) -> "Version":
+    def parse(cls: Type[T_version], s: str) -> T_version:
         match = cls.__pattern__.match(s)
         if match is None:
             raise ValueError(f"{s!r} does not match {cls.__pattern__.pattern}")
@@ -56,6 +59,10 @@ class LongVersion(Version):
         yield self.major
         yield self.minor
         yield self.micro
+
+    @property
+    def as_short(self) -> Version:
+        return Version(major=self.major, minor=self.minor)
 
 
 class SupportsName(Hashable, Protocol):
