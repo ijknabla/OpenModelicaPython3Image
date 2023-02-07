@@ -77,14 +77,23 @@ class ImageBuilder:
                 assert omc_long_version.as_short == omc_version
                 yield omc_long_version, py_version, debian
 
-        await gather(
+        tags = await gather(
             *(self.docker_build(*target) for target in iter_targets())
         )
 
+        print("=" * 72)
+        print("docker push \\")
+        for i, tag in enumerate(tags, start=1):
+            print(f"    {tag}" + ("\\" if i != len(tags) else ""))
+        print("=" * 72)
+
     async def docker_build(
         self, omc_version: LongVersion, py_version: Version, debian: Debian
-    ) -> None:
-        tag = f"omc{omc_version.as_short}-py{py_version}-{debian}"
+    ) -> str:
+        tag = (
+            f"{self.image_name}"
+            f":omc{omc_version.as_short}-py{py_version}-{debian}"
+        )
 
         with ExitStack() as stack:
             directory = Path(stack.enter_context(TemporaryDirectory()))
@@ -96,7 +105,7 @@ class ImageBuilder:
                 "docker",
                 "build",
                 f"{directory}",
-                f"--tag={self.image_name}:{tag}",
+                f"--tag={tag}",
                 f"--build-arg=OMC_VERSION={omc_version}",
                 f"--build-arg=PY_VERSION={py_version}",
                 f"--build-arg=DEBIAN_CODENAME={debian}",
@@ -113,6 +122,9 @@ class ImageBuilder:
             retcode = process.returncode
             if process.returncode != 0:
                 raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
+
+            print(f"finish {' '.join(docker_build)}")
+            return tag
 
     async def get_omc_long_versions(
         self,
