@@ -111,6 +111,7 @@ class Python(enum.Enum):
     __str__ = _enum2version
 
 
+@total_ordering
 class Debian(enum.Enum):
     stretch = enum.auto()
     buster = enum.auto()
@@ -123,6 +124,9 @@ class Debian(enum.Enum):
     def __str__(self) -> str:
         assert isinstance(self.name, str)
         return self.name
+
+    def __lt__(self, other: "Debian") -> bool:
+        return self.value < other.value
 
 
 class OMCPackage(enum.Enum):

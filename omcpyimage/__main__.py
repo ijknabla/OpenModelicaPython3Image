@@ -1,11 +1,13 @@
 import logging
-from asyncio import Event, create_task, gather, sleep
+import shutil
+from asyncio import Event, create_subprocess_exec, create_task, gather, sleep
 from collections import defaultdict
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import product
 from pathlib import Path
+from subprocess import PIPE
 from tempfile import TemporaryDirectory
 from typing import IO, Any
 from urllib.parse import urlparse
@@ -218,9 +220,8 @@ class Setup:
             self.__get_omc_packages(),
             self.__get_py_images(),
         )
-        return
 
-        resolved = [
+        resolved = sorted(
             (omc, py, debian)
             for omc, py, debian in product(
                 self.omc_short_versions,
@@ -228,10 +229,70 @@ class Setup:
                 self.debians,
             )
             if (omc, debian) in omc_packages and (py, debian) in py_dockers
-        ]
+        )
 
-        for omc, py, debian in resolved:
-            print(f"ijknabla/openmodelica:omc{omc}-py{py}-{debian}")
+        async def build(omc: Version, py: Version, debian: Debian):
+            tag = f"ijknabla/openmodelica:omc{omc}-py{py}-{debian}"
+
+            with ExitStack() as stack:
+                temp = Path(stack.enter_context(TemporaryDirectory()))
+
+                await self.__omc_package_events[(omc, debian)].wait()
+                omc_packages = sorted(
+                    self.__omc_packages[(omc, debian)],
+                    key=lambda x: -1 if "omc-common" in x.name else 0,
+                )
+                omc_package_names = [package.name for package in omc_packages]
+                for omc_package, omc_package_name in zip(
+                    omc_packages, omc_package_names
+                ):
+                    dst = temp / omc_package_name
+                    if dst.exists():
+                        dst.unlink()
+                    shutil.copy(omc_package.resolve(), dst)
+
+                self.__get_omc_packages
+
+                dockerfile = temp / "Dockerfile"
+                dockerfile.write_text(
+                    f"FROM python:{py}-{debian}\n"
+                    + "RUN useradd -m user\n"
+                    + "".join(
+                        f"COPY ./{name} {name}\n" for name in omc_package_names
+                    )
+                    + "RUN apt update && apt install -y libblas3 liblapack3 libomniorb4-2 libomnithread4 && apt-get clean && rm -rf /var/lib/apt/lists/*\n"
+                    # + "RUN apt update && apt install -y "
+                    # + " ".join(f"./{name}" for name in omc_package_names)
+                    # + " && apt-get clean && rm -rf /var/lib/apt/lists/*\n"
+                    # + "RUN rm -rf "
+                    # + " ".join(omc_package_names)
+                    # + "\n"
+                )
+
+                # print(Path(dockerfile).read_text(), end="")
+                cmd = [
+                    "docker",
+                    "build",
+                    f"{temp}",
+                    f"-t{tag}"
+                    # f"--cache-to={directory}",
+                    # f"--cache-from={directory}",
+                ]
+                process = await create_subprocess_exec(
+                    *cmd, stdout=PIPE, stderr=PIPE
+                )
+                _, stderr = await process.communicate()
+
+                print(tag, process.returncode)
+                if process.returncode != 0:
+                    print(stderr.decode("utf-8"))
+
+        await gather(
+            *(
+                build(omc=omc, py=py, debian=debian)
+                for omc, py, debian in resolved
+            )
+        )
 
 
 if __name__ == "__main__":
