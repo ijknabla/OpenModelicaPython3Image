@@ -1,6 +1,6 @@
 from asyncio import gather
 from itertools import product
-from typing import IO
+from pathlib import Path
 
 import click
 import toml
@@ -11,14 +11,25 @@ from ._types import Debian, OpenModelica, Python
 
 
 @click.command
-@click.argument("config_io", metavar="CONFIG.TOML", type=click.File("r"))
+@click.argument(
+    "config_path",
+    metavar="CONFIG.TOML",
+    type=click.Path(
+        exists=True, file_okay=True, dir_okay=False, path_type=Path
+    ),
+)
 @run_coroutine
 async def main(
-    config_io: IO[str],
+    config_path: Path,
 ) -> None:
-    config = toml.load(config_io)
+    config = toml.loads(config_path.read_text(encoding="utf-8"))
     assert is_config(config)
-    print(config)
+
+    try:
+        ...
+    finally:
+        assert is_config(config)
+        config_path.write_text(toml.dumps(config), encoding="utf-8")
 
     return
     openmodelica_vs_debian, python_vs_debian = await gather(
