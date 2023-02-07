@@ -90,16 +90,12 @@ class ImageBuilder:
                 yield omc_long_version, py_version, debian
 
         tags = await gather(
-            *(self.docker_build(*target) for target in iter_targets())
+            *(self.docker_build_and_push(*target) for target in iter_targets())
         )
+        for tag in tags:
+            print("=>", tag)
 
-        print("=" * 72)
-        print("docker push \\")
-        for i, tag in enumerate(tags, start=1):
-            print(f"    {tag}" + ("\\" if i != len(tags) else ""))
-        print("=" * 72)
-
-    async def docker_build(
+    async def docker_build_and_push(
         self, omc_version: LongVersion, py_version: Version, debian: Debian
     ) -> str:
         tag = (
@@ -136,6 +132,26 @@ class ImageBuilder:
                 raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
 
             print(f"finish {' '.join(docker_build)}")
+
+        docker_push = [
+            "docker",
+            "push",
+            f"{tag}",
+        ]
+        print(f"run {' '.join(docker_push)}")
+
+        process = await create_subprocess_exec(
+            *docker_push,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+
+        _, err = await process.communicate()
+        retcode = process.returncode
+        if process.returncode != 0:
+            raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
+
+        print(f"finish {' '.join(docker_push)}")
 
         return tag
 
