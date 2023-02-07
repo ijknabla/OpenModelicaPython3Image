@@ -136,7 +136,8 @@ class ImageBuilder:
                 raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
 
             print(f"finish {' '.join(docker_build)}")
-            return tag
+
+        return tag
 
     async def get_omc_long_versions(
         self,
