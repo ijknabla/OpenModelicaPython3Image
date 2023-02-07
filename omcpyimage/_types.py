@@ -16,7 +16,7 @@ class Config(TypedDict):
 
 Cache = TypedDict("Cache", {"py-images": dict[str, "PyImageCache"]})
 PyImageCache = TypedDict(
-    "PyImageCache", {"update-at": datetime, "exists": bool}
+    "PyImageCache", {"updated-at": datetime, "exists": bool}
 )
 
 

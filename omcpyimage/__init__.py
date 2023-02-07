@@ -14,6 +14,7 @@ from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Coroutine, Iterable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from functools import partial, wraps
 from itertools import product
 from subprocess import PIPE
@@ -36,9 +37,13 @@ class ImageBuilder:
     config: Config
 
     async def build(self) -> None:
-        omc_long_versions = await self.get_omc_long_versions()
+        omc_long_versions, py_versions = await gather(
+            self.get_omc_long_versions(), self.get_py_versions()
+        )
         for (_, debian), omc_long_version in omc_long_versions.items():
             print(omc_long_version, debian)
+        for py_version, debian in py_versions:
+            print(py_version, debian)
 
     @property
     def omc_versions(self) -> list[Version]:
@@ -117,6 +122,62 @@ class ImageBuilder:
                 if debian not in debians:
                     continue
                 await put(debian)
+
+    async def get_py_versions(self) -> list[tuple[Version, Debian]]:
+        py_version_exists = await gather(
+            *(
+                self.py_version_exists(version, debian)
+                for version, debian in product(self.py_versions, self.debians)
+            )
+        )
+
+        return sorted(
+            (version, debian)
+            for version, debian, exists in py_version_exists
+            if exists
+        )
+
+    async def py_version_exists(
+        self, version: Version, debian: Debian
+    ) -> tuple[Version, Debian, bool]:
+        py_image_cache = self.config["cache"]["py-images"]
+        py_image = f"python:{version}-{debian}"
+        now = datetime.utcnow()
+
+        def update_needed() -> bool:
+            cache = py_image_cache.get(py_image)
+            if cache is None:
+                return True
+            return (now - cache["updated-at"]) > timedelta(hours=6)
+
+        if update_needed():
+            docker_manifest_inspect = [
+                "docker",
+                "manifest",
+                "inspect",
+                py_image,
+            ]
+            print(f"run {' '.join(docker_manifest_inspect)}")
+            process = await create_subprocess_exec(
+                *docker_manifest_inspect,
+                stdout=PIPE,
+                stderr=PIPE,
+            )
+            _, err = await process.communicate()
+            retcode = process.returncode
+
+            if process.returncode == 0:
+                exists = True
+            elif re.match(rb"^no\s*such\s*manifest\s*:", err):
+                exists = False
+            else:
+                raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
+
+            py_image_cache[py_image] = {"updated-at": now, "exists": exists}
+
+        cache = py_image_cache[py_image]
+
+        return version, debian, cache["exists"]
 
     @staticmethod
     async def iter_from_queue(
