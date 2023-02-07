@@ -2,8 +2,22 @@ import enum
 import re
 from collections.abc import Hashable, Iterator
 from dataclasses import dataclass
+from datetime import datetime
 from functools import lru_cache, total_ordering
-from typing import ClassVar, Protocol
+from typing import ClassVar, Protocol, TypedDict
+
+
+class Config(TypedDict):
+    omc: list[str]
+    py: list[str]
+    debian: list[str]
+    cache: "Cache"
+
+
+Cache = TypedDict("Cache", {"py-images": dict[str, "PyImageCache"]})
+PyImageCache = TypedDict(
+    "PyImageCache", {"update-at": datetime, "exists": bool}
+)
 
 
 @dataclass(frozen=True, order=True)

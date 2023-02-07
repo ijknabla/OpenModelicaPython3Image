@@ -3,8 +3,10 @@ from itertools import product
 from typing import IO
 
 import click
+import toml
 
 from . import get_openmodelica_vs_debian, get_python_vs_debian, run_coroutine
+from ._api import is_config
 from ._types import Debian, OpenModelica, Python
 
 
@@ -14,6 +16,10 @@ from ._types import Debian, OpenModelica, Python
 async def main(
     config_io: IO[str],
 ) -> None:
+    config = toml.load(config_io)
+    assert is_config(config)
+    print(config)
+
     return
     openmodelica_vs_debian, python_vs_debian = await gather(
         get_openmodelica_vs_debian(),
