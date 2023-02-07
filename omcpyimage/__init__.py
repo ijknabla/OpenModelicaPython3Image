@@ -4,6 +4,7 @@ from asyncio import create_subprocess_exec, gather, run
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
 from contextlib import AsyncExitStack
+from dataclasses import dataclass
 from functools import wraps
 from itertools import product
 from subprocess import PIPE
@@ -14,10 +15,18 @@ from lxml.html import fromstring
 from numpy import array, bool_, int8
 from numpy.typing import NDArray
 
-from ._types import Debian, OpenModelica, Python
+from ._types import Config, Debian, OpenModelica, Python
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+@dataclass
+class ImageBuilder:
+    config: Config
+
+    async def build(self) -> None:
+        return
 
 
 ARCHITECTURE = "amd64"

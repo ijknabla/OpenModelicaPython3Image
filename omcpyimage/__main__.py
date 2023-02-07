@@ -5,7 +5,12 @@ from pathlib import Path
 import click
 import toml
 
-from . import get_openmodelica_vs_debian, get_python_vs_debian, run_coroutine
+from . import (
+    ImageBuilder,
+    get_openmodelica_vs_debian,
+    get_python_vs_debian,
+    run_coroutine,
+)
 from ._api import is_config
 from ._types import Debian, OpenModelica, Python
 
@@ -26,7 +31,7 @@ async def main(
     assert is_config(config)
 
     try:
-        ...
+        await ImageBuilder(config).build()
     finally:
         assert is_config(config)
         config_path.write_text(toml.dumps(config), encoding="utf-8")
