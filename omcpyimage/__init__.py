@@ -13,7 +13,7 @@ from asyncio import (
 from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Coroutine, Iterable
 from contextlib import AsyncExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial, wraps
 from itertools import product
@@ -35,6 +35,7 @@ T = TypeVar("T")
 @dataclass
 class ImageBuilder:
     config: Config
+    manifest_expiration: timedelta = field(default=timedelta(days=2))
 
     async def build(self) -> None:
         omc_long_versions, py_versions = await gather(
@@ -148,7 +149,7 @@ class ImageBuilder:
             cache = py_image_cache.get(py_image)
             if cache is None:
                 return True
-            return (now - cache["updated-at"]) > timedelta(hours=6)
+            return (now - cache["updated-at"]) > self.manifest_expiration
 
         if update_needed():
             docker_manifest_inspect = [
