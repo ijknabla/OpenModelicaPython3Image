@@ -18,18 +18,21 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, ExitStack
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial, wraps
 from itertools import product
+from pathlib import Path
 from subprocess import PIPE
+from tempfile import TemporaryDirectory
 from typing import Any, NamedTuple, ParamSpec, TypeVar
 
 from aiohttp import ClientSession
 from lxml.html import HtmlElement, fromstring
 from numpy import array, bool_, int8
 from numpy.typing import NDArray
+from pkg_resources import resource_string
 
 from ._api import is_debian, is_long_version
 from ._types import Config, Debian, LongVersion, OpenModelica, Python, Version
@@ -42,6 +45,19 @@ T = TypeVar("T")
 class ImageBuilder:
     config: Config
     manifest_expiration: timedelta = field(default=timedelta(days=2))
+    image_name = "ijknabla/openmodelica-python3"
+
+    @property
+    def omc_versions(self) -> list[Version]:
+        return list(map(Version.parse, self.config["omc"]))
+
+    @property
+    def py_versions(self) -> list[Version]:
+        return list(map(Version.parse, self.config["py"]))
+
+    @property
+    def debians(self) -> list[Debian]:
+        return [Debian[debian] for debian in self.config["debian"]]
 
     async def build(self) -> None:
         omc_long_versions, py_versions = await gather(
@@ -57,22 +73,46 @@ class ImageBuilder:
                     continue
                 if (py_version, debian) not in py_versions:
                     continue
+
+                assert omc_long_version.as_short == omc_version
                 yield omc_long_version, py_version, debian
 
-        for omc_long_version, py_version, debian in iter_targets():
-            print(f"{omc_long_version=!s} {py_version=!s} {debian=!s}")
+        await gather(
+            *(self.docker_build(*target) for target in iter_targets())
+        )
 
-    @property
-    def omc_versions(self) -> list[Version]:
-        return list(map(Version.parse, self.config["omc"]))
+    async def docker_build(
+        self, omc_version: LongVersion, py_version: Version, debian: Debian
+    ) -> None:
+        tag = f"omc{omc_version.as_short}-py{py_version}-{debian}"
 
-    @property
-    def py_versions(self) -> list[Version]:
-        return list(map(Version.parse, self.config["py"]))
+        with ExitStack() as stack:
+            directory = Path(stack.enter_context(TemporaryDirectory()))
+            (directory / "Dockerfile").write_bytes(
+                resource_string(__name__, "Dockerfile")
+            )
 
-    @property
-    def debians(self) -> list[Debian]:
-        return [Debian[debian] for debian in self.config["debian"]]
+            docker_build = [
+                "docker",
+                "build",
+                f"{directory}",
+                f"--tag={self.image_name}:{tag}",
+                f"--build-arg=OMC_VERSION={omc_version}",
+                f"--build-arg=PY_VERSION={py_version}",
+                f"--build-arg=DEBIAN_CODENAME={debian}",
+            ]
+            print(f"run {' '.join(docker_build)}")
+
+            process = await create_subprocess_exec(
+                *docker_build,
+                stdout=PIPE,
+                stderr=PIPE,
+            )
+
+            _, err = await process.communicate()
+            retcode = process.returncode
+            if process.returncode != 0:
+                raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
 
     async def get_omc_long_versions(
         self,
