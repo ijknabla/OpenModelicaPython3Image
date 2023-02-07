@@ -11,7 +11,7 @@ from asyncio import (
     wait,
 )
 from collections import defaultdict
-from collections.abc import AsyncIterator, Callable, Coroutine
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from functools import partial, wraps
@@ -34,6 +34,13 @@ T = TypeVar("T")
 @dataclass
 class ImageBuilder:
     config: Config
+
+    async def build(self) -> None:
+        async for (
+            omc_long_version,
+            debian,
+        ) in self.iter_available_omc_versions():
+            print(omc_long_version, debian)
 
     @property
     def omc_versions(self) -> list[Version]:
@@ -60,7 +67,7 @@ class ImageBuilder:
         async def put(v: LongVersion, d: Debian) -> None:
             await queue.put((v, d))
 
-        tasks = list[Task[None]]()
+        put_tasks = list[Task[None]]()
         async with ClientSession() as session:
             releases = await download_tree(session, uri=f"{releases_uri}")
             for href in releases.xpath("//a/@href"):
@@ -69,7 +76,7 @@ class ImageBuilder:
                 long_version = LongVersion.parse(href[:-1])
                 if long_version.as_short not in omc_versions:
                     continue
-                tasks.append(
+                put_tasks.append(
                     create_task(
                         self.put_available_omc_versions(
                             partial(put, long_version),
@@ -78,23 +85,8 @@ class ImageBuilder:
                     )
                 )
 
-        async def stop_iteration() -> None:
-            await gather(*tasks)
-            await queue.join()
-
-        while True:
-            get = create_task(queue.get())
-            done, _ = await wait(
-                [get, create_task(stop_iteration())],
-                return_when=FIRST_COMPLETED,
-            )
-            if get in done:
-                try:
-                    yield get.result()
-                finally:
-                    queue.task_done()
-            else:
-                return
+        async for i in self.iter_from_queue(queue, put_tasks):
+            yield i
 
     async def put_available_omc_versions(
         self,
@@ -112,12 +104,27 @@ class ImageBuilder:
                     continue
                 await put(debian)
 
-    async def build(self) -> None:
-        async for (
-            omc_long_version,
-            debian,
-        ) in self.iter_available_omc_versions():
-            print(omc_long_version, debian)
+    @staticmethod
+    async def iter_from_queue(
+        queue: Queue[T], put_tasks: Iterable[Task[None]]
+    ) -> AsyncIterator[T]:
+        async def stop_iteration() -> None:
+            await gather(*put_tasks)
+            await queue.join()
+
+        while True:
+            get = create_task(queue.get())
+            done, _ = await wait(
+                [get, create_task(stop_iteration())],
+                return_when=FIRST_COMPLETED,
+            )
+            if get in done:
+                try:
+                    yield get.result()
+                finally:
+                    queue.task_done()
+            else:
+                return
 
 
 async def download_tree(session: ClientSession, uri: str) -> HtmlElement:
