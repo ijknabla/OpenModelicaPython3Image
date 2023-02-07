@@ -11,7 +11,13 @@ from asyncio import (
     wait,
 )
 from collections import defaultdict
-from collections.abc import AsyncIterator, Callable, Coroutine, Iterable
+from collections.abc import (
+    AsyncIterator,
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+)
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -41,10 +47,20 @@ class ImageBuilder:
         omc_long_versions, py_versions = await gather(
             self.get_omc_long_versions(), self.get_py_versions()
         )
-        for (_, debian), omc_long_version in omc_long_versions.items():
-            print(omc_long_version, debian)
-        for py_version, debian in py_versions:
-            print(py_version, debian)
+
+        def iter_targets() -> Iterator[tuple[LongVersion, Version, Debian]]:
+            for omc_version, py_version, debian in product(
+                self.omc_versions, self.py_versions, self.debians
+            ):
+                omc_long_version = omc_long_versions.get((omc_version, debian))
+                if omc_long_version is None:
+                    continue
+                if (py_version, debian) not in py_versions:
+                    continue
+                yield omc_long_version, py_version, debian
+
+        for omc_long_version, py_version, debian in iter_targets():
+            print(f"{omc_long_version=!s} {py_version=!s} {debian=!s}")
 
     @property
     def omc_versions(self) -> list[Version]:
