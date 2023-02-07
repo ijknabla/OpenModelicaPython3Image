@@ -1,7 +1,7 @@
 import enum
 import re
 from collections.abc import Hashable
-from functools import lru_cache
+from functools import lru_cache, total_ordering
 from typing import Protocol
 
 
@@ -44,6 +44,7 @@ class Python(enum.Enum):
     __str__ = _enum2version
 
 
+@total_ordering
 class Debian(enum.Enum):
     stretch = enum.auto()
     buster = enum.auto()
@@ -52,3 +53,6 @@ class Debian(enum.Enum):
     def __str__(self) -> str:
         assert isinstance(self.name, str)
         return self.name
+
+    def __lt__(self, other: "Debian") -> bool:
+        return self.value < other.value
