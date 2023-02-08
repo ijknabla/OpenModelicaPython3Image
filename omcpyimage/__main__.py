@@ -4,7 +4,7 @@ import click
 import toml
 
 from . import ImageBuilder, run_coroutine
-from ._api import is_config
+from ._api import is_config, sort_cache
 
 
 @click.command
@@ -26,6 +26,7 @@ async def main(
         await ImageBuilder(config).build()
     finally:
         assert is_config(config)
+        sort_cache(config)
         config_path.write_text(toml.dumps(config), encoding="utf-8")
 
 

@@ -71,3 +71,13 @@ def _is_py_image_cache_key(s: str) -> bool:
 @lru_cache(1)
 def _py_image_cache_schema() -> Schema:
     return Schema({"updated-at": datetime, "exists": bool})
+
+
+def sort_cache(config: Config) -> None:
+    config["cache"]["py-images"] = {
+        key: value
+        for key, value in sorted(
+            config["cache"]["py-images"].items(),
+            key=lambda item: (item[1]["updated-at"], item[0]),
+        )
+    }
