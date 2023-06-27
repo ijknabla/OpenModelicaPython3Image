@@ -129,7 +129,9 @@ class ImageBuilder:
             _, err = await process.communicate()
             retcode = process.returncode
             if process.returncode != 0:
-                raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
+                raise RuntimeError(
+                    f"`{' '.join(docker_build)}` {retcode=!r}", f"{err=!r}"
+                )
 
             print(f"finish {' '.join(docker_build)}")
 
@@ -149,7 +151,9 @@ class ImageBuilder:
         _, err = await process.communicate()
         retcode = process.returncode
         if process.returncode != 0:
-            raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
+            raise RuntimeError(
+                f"`{' '.join(docker_push)}` {retcode=!r}", f"{err=!r}"
+            )
 
         print(f"finish {' '.join(docker_push)}")
 
