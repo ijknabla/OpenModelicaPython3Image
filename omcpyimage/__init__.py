@@ -17,19 +17,17 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
-from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial, wraps
 from itertools import product
 from pathlib import Path
 from subprocess import PIPE
-from tempfile import TemporaryDirectory
 from typing import Any, ParamSpec, TypeVar
 
 from aiohttp import ClientSession
 from lxml.html import HtmlElement, fromstring
-from pkg_resources import resource_string
+from pkg_resources import resource_filename
 
 from ._api import is_debian, is_long_version
 from ._types import Config, Debian, LongVersion, Version
@@ -103,37 +101,33 @@ class ImageBuilder:
             f":omc{omc_version.as_short}-py{py_version}-{debian}"
         )
 
-        with ExitStack() as stack:
-            directory = Path(stack.enter_context(TemporaryDirectory()))
-            (directory / "Dockerfile").write_bytes(
-                resource_string(__name__, "Dockerfile")
+        directory = Path(resource_filename(__name__, ".")).resolve()
+
+        docker_build = [
+            "docker",
+            "build",
+            f"{directory}",
+            f"--tag={tag}",
+            f"--build-arg=OMC_VERSION={omc_version}",
+            f"--build-arg=PY_VERSION={py_version}",
+            f"--build-arg=DEBIAN_CODENAME={debian}",
+        ]
+        print(f"run {' '.join(docker_build)}")
+
+        process = await create_subprocess_exec(
+            *docker_build,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+
+        _, err = await process.communicate()
+        retcode = process.returncode
+        if process.returncode != 0:
+            raise RuntimeError(
+                f"`{' '.join(docker_build)}` {retcode=!r}", f"{err=!r}"
             )
 
-            docker_build = [
-                "docker",
-                "build",
-                f"{directory}",
-                f"--tag={tag}",
-                f"--build-arg=OMC_VERSION={omc_version}",
-                f"--build-arg=PY_VERSION={py_version}",
-                f"--build-arg=DEBIAN_CODENAME={debian}",
-            ]
-            print(f"run {' '.join(docker_build)}")
-
-            process = await create_subprocess_exec(
-                *docker_build,
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-
-            _, err = await process.communicate()
-            retcode = process.returncode
-            if process.returncode != 0:
-                raise RuntimeError(
-                    f"`{' '.join(docker_build)}` {retcode=!r}", f"{err=!r}"
-                )
-
-            print(f"finish {' '.join(docker_build)}")
+        print(f"finish {' '.join(docker_build)}")
 
         docker_push = [
             "docker",
