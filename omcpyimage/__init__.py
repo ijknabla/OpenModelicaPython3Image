@@ -17,19 +17,18 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
-from contextlib import ExitStack
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial, wraps
 from itertools import product
 from pathlib import Path
 from subprocess import PIPE
-from tempfile import TemporaryDirectory
 from typing import Any, ParamSpec, TypeVar
 
 from aiohttp import ClientSession
 from lxml.html import HtmlElement, fromstring
-from pkg_resources import resource_string
+from pkg_resources import resource_filename
 
 from ._api import is_debian, is_long_version
 from ._types import Config, Debian, LongVersion, Version
@@ -71,7 +70,11 @@ class ImageBuilder:
     def debians(self) -> list[Debian]:
         return [Debian[debian] for debian in self.config["debian"]]
 
-    async def build(self) -> None:
+    async def build(
+        self, lock: AbstractAsyncContextManager[Any] | None = None
+    ) -> None:
+        if lock is None:
+            lock = NoLock()
         omc_long_versions, py_versions = await gather(
             self.get_omc_long_versions(), self.get_py_versions()
         )
@@ -90,47 +93,51 @@ class ImageBuilder:
                 yield omc_long_version, py_version, debian
 
         tags = await gather(
-            *(self.docker_build_and_push(*target) for target in iter_targets())
+            *(
+                self.docker_build_and_push(*target, lock)
+                for target in iter_targets()
+            )
         )
         for tag in tags:
             print("=>", tag)
 
     async def docker_build_and_push(
-        self, omc_version: LongVersion, py_version: Version, debian: Debian
+        self,
+        omc_version: LongVersion,
+        py_version: Version,
+        debian: Debian,
+        lock: AbstractAsyncContextManager[Any],
     ) -> str:
         tag = (
             f"{self.image_name}"
             f":omc{omc_version.as_short}-py{py_version}-{debian}"
         )
 
-        with ExitStack() as stack:
-            directory = Path(stack.enter_context(TemporaryDirectory()))
-            (directory / "Dockerfile").write_bytes(
-                resource_string(__name__, "Dockerfile")
-            )
+        directory = Path(resource_filename(__name__, ".")).resolve()
 
-            docker_build = [
-                "docker",
-                "build",
-                f"{directory}",
-                f"--tag={tag}",
-                f"--build-arg=OMC_VERSION={omc_version}",
-                f"--build-arg=PY_VERSION={py_version}",
-                f"--build-arg=DEBIAN_CODENAME={debian}",
-            ]
+        docker_build = [
+            "docker",
+            "build",
+            f"{directory}",
+            f"--tag={tag}",
+            f"--build-arg=OMC_VERSION={omc_version}",
+            f"--build-arg=PY_VERSION={py_version}",
+            f"--build-arg=DEBIAN_CODENAME={debian}",
+        ]
+
+        async with lock:
             print(f"run {' '.join(docker_build)}")
-
             process = await create_subprocess_exec(
                 *docker_build,
                 stdout=PIPE,
                 stderr=PIPE,
             )
-
             _, err = await process.communicate()
             retcode = process.returncode
             if process.returncode != 0:
-                raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
-
+                raise RuntimeError(
+                    f"`{' '.join(docker_build)}` {retcode=!r}", f"{err=!r}"
+                )
             print(f"finish {' '.join(docker_build)}")
 
         docker_push = [
@@ -138,20 +145,21 @@ class ImageBuilder:
             "push",
             f"{tag}",
         ]
-        print(f"run {' '.join(docker_push)}")
+        async with lock:
+            print(f"run {' '.join(docker_push)}")
+            process = await create_subprocess_exec(
+                *docker_push,
+                stdout=PIPE,
+                stderr=PIPE,
+            )
 
-        process = await create_subprocess_exec(
-            *docker_push,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-
-        _, err = await process.communicate()
-        retcode = process.returncode
-        if process.returncode != 0:
-            raise RuntimeError(f"{retcode=!r}", f"{err=!r}")
-
-        print(f"finish {' '.join(docker_push)}")
+            _, err = await process.communicate()
+            retcode = process.returncode
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"`{' '.join(docker_push)}` {retcode=!r}", f"{err=!r}"
+                )
+            print(f"finish {' '.join(docker_push)}")
 
         return tag
 
@@ -298,3 +306,11 @@ class ImageBuilder:
                     queue.task_done()
             else:
                 return
+
+
+class NoLock:
+    async def __aenter__(self) -> None:
+        return
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        return
