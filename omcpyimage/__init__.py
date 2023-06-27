@@ -93,13 +93,20 @@ class ImageBuilder:
                 yield omc_long_version, py_version, debian
 
         tags = await gather(
-            *(self.docker_build_and_push(*target) for target in iter_targets())
+            *(
+                self.docker_build_and_push(*target, lock)
+                for target in iter_targets()
+            )
         )
         for tag in tags:
             print("=>", tag)
 
     async def docker_build_and_push(
-        self, omc_version: LongVersion, py_version: Version, debian: Debian
+        self,
+        omc_version: LongVersion,
+        py_version: Version,
+        debian: Debian,
+        lock: AbstractAsyncContextManager[Any],
     ) -> str:
         tag = (
             f"{self.image_name}"
@@ -117,44 +124,42 @@ class ImageBuilder:
             f"--build-arg=PY_VERSION={py_version}",
             f"--build-arg=DEBIAN_CODENAME={debian}",
         ]
-        print(f"run {' '.join(docker_build)}")
 
-        process = await create_subprocess_exec(
-            *docker_build,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-
-        _, err = await process.communicate()
-        retcode = process.returncode
-        if process.returncode != 0:
-            raise RuntimeError(
-                f"`{' '.join(docker_build)}` {retcode=!r}", f"{err=!r}"
+        async with lock:
+            print(f"run {' '.join(docker_build)}")
+            process = await create_subprocess_exec(
+                *docker_build,
+                stdout=PIPE,
+                stderr=PIPE,
             )
-
-        print(f"finish {' '.join(docker_build)}")
+            _, err = await process.communicate()
+            retcode = process.returncode
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"`{' '.join(docker_build)}` {retcode=!r}", f"{err=!r}"
+                )
+            print(f"finish {' '.join(docker_build)}")
 
         docker_push = [
             "docker",
             "push",
             f"{tag}",
         ]
-        print(f"run {' '.join(docker_push)}")
-
-        process = await create_subprocess_exec(
-            *docker_push,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-
-        _, err = await process.communicate()
-        retcode = process.returncode
-        if process.returncode != 0:
-            raise RuntimeError(
-                f"`{' '.join(docker_push)}` {retcode=!r}", f"{err=!r}"
+        async with lock:
+            print(f"run {' '.join(docker_push)}")
+            process = await create_subprocess_exec(
+                *docker_push,
+                stdout=PIPE,
+                stderr=PIPE,
             )
 
-        print(f"finish {' '.join(docker_push)}")
+            _, err = await process.communicate()
+            retcode = process.returncode
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"`{' '.join(docker_push)}` {retcode=!r}", f"{err=!r}"
+                )
+            print(f"finish {' '.join(docker_push)}")
 
         return tag
 
