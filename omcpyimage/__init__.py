@@ -17,6 +17,7 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial, wraps
@@ -69,7 +70,11 @@ class ImageBuilder:
     def debians(self) -> list[Debian]:
         return [Debian[debian] for debian in self.config["debian"]]
 
-    async def build(self) -> None:
+    async def build(
+        self, lock: AbstractAsyncContextManager[Any] | None = None
+    ) -> None:
+        if lock is None:
+            lock = NoLock()
         omc_long_versions, py_versions = await gather(
             self.get_omc_long_versions(), self.get_py_versions()
         )
@@ -296,3 +301,11 @@ class ImageBuilder:
                     queue.task_done()
             else:
                 return
+
+
+class NoLock:
+    async def __aenter__(self) -> None:
+        return
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        return

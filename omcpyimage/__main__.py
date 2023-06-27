@@ -1,3 +1,4 @@
+from asyncio import Semaphore
 from pathlib import Path
 
 import click
@@ -15,15 +16,18 @@ from ._api import is_config, sort_cache
         exists=True, file_okay=True, dir_okay=False, path_type=Path
     ),
 )
+@click.option("--limit", type=int)
 @run_coroutine
-async def main(
-    config_path: Path,
-) -> None:
+async def main(config_path: Path, limit: int | None) -> None:
     config = toml.loads(config_path.read_text(encoding="utf-8"))
     assert is_config(config)
 
     try:
-        await ImageBuilder(config).build()
+        if limit is not None:
+            lock = Semaphore(limit)
+        else:
+            lock = None
+        await ImageBuilder(config).build(lock)
     finally:
         assert is_config(config)
         sort_cache(config)
