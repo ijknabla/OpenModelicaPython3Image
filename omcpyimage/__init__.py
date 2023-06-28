@@ -145,21 +145,21 @@ class ImageBuilder:
             "push",
             f"{tag}",
         ]
-        async with lock:
-            print(f"run {' '.join(docker_push)}")
-            process = await create_subprocess_exec(
-                *docker_push,
-                stdout=PIPE,
-                stderr=PIPE,
-            )
 
-            _, err = await process.communicate()
-            retcode = process.returncode
-            if process.returncode != 0:
-                raise RuntimeError(
-                    f"`{' '.join(docker_push)}` {retcode=!r}", f"{err=!r}"
-                )
-            print(f"finish {' '.join(docker_push)}")
+        print(f"run {' '.join(docker_push)}")
+        process = await create_subprocess_exec(
+            *docker_push,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+
+        _, err = await process.communicate()
+        retcode = process.returncode
+        if process.returncode != 0:
+            raise RuntimeError(
+                f"`{' '.join(docker_push)}` {retcode=!r}", f"{err=!r}"
+            )
+        print(f"finish {' '.join(docker_push)}")
 
         return tag
 
