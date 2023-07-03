@@ -10,6 +10,14 @@ LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 
 RUN useradd -m user
 
+RUN if [ "${DEBIAN_CODENAME}" = "stretch" ]; then \
+        rm /etc/apt/sources.list \
+        && wget --no-check-certificate https://deb.freexian.com/extended-lts/pool/main/f/freexian-archive-keyring/freexian-archive-keyring_2022.06.08_all.deb \
+        && dpkg -i freexian-archive-keyring_2022.06.08_all.deb \
+        && rm  freexian-archive-keyring_2022.06.08_all.deb \
+        && echo 'deb http://deb.freexian.com/extended-lts stretch-lts main contrib non-free' >> /etc/apt/sources.list.d/extended-lts.list; \
+    fi
+
 RUN apt-get update \
     && apt-get upgrade -qy \
     && apt-get dist-upgrade -qy \
