@@ -1,30 +1,6 @@
 omc = [ "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21",]
 py = [ "3.6", "3.7", "3.8", "3.9", "3.10", "3.11",]
-debian = [ "buster", "bullseye",]
-
-[cache.py-images."python:3.6-stretch"]
-updated-at = 2023-06-02T08:47:40.069664
-exists = true
-
-[cache.py-images."python:3.7-stretch"]
-updated-at = 2023-06-02T08:47:40.072389
-exists = true
-
-[cache.py-images."python:3.8-stretch"]
-updated-at = 2023-06-02T08:47:40.074802
-exists = false
-
-[cache.py-images."python:3.9-stretch"]
-updated-at = 2023-06-02T08:47:40.076513
-exists = false
-
-[cache.py-images."python:3.10-stretch"]
-updated-at = 2023-06-02T08:47:40.079006
-exists = false
-
-[cache.py-images."python:3.11-stretch"]
-updated-at = 2023-06-02T08:47:40.081454
-exists = false
+debian = [ "stretch", "buster", "bullseye",]
 
 [cache.py-images."python:3.6-buster"]
 updated-at = 2023-07-03T01:29:39.415529
@@ -73,3 +49,27 @@ exists = true
 [cache.py-images."python:3.11-bullseye"]
 updated-at = 2023-07-03T01:29:39.427302
 exists = true
+
+[cache.py-images."python:3.6-stretch"]
+updated-at = 2023-07-03T06:31:17.138932
+exists = true
+
+[cache.py-images."python:3.7-stretch"]
+updated-at = 2023-07-03T06:31:17.139639
+exists = true
+
+[cache.py-images."python:3.8-stretch"]
+updated-at = 2023-07-03T06:31:17.141456
+exists = false
+
+[cache.py-images."python:3.9-stretch"]
+updated-at = 2023-07-03T06:31:17.143574
+exists = false
+
+[cache.py-images."python:3.10-stretch"]
+updated-at = 2023-07-03T06:31:17.145066
+exists = false
+
+[cache.py-images."python:3.11-stretch"]
+updated-at = 2023-07-03T06:31:17.145602
+exists = false

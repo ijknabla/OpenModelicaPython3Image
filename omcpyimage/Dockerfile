@@ -10,6 +10,12 @@ LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 
 RUN useradd -m user
 
+RUN if [ "${DEBIAN_CODENAME}" = "stretch" ]; then \
+        sed -ri 's/^([^#]+)/# \1/g' /etc/apt/sources.list \
+        && echo "deb http://archive.debian.org/debian/ ${DEBIAN_CODENAME} main" >> /etc/apt/sources.list \
+        && echo "deb http://archive.debian.org/debian-security ${DEBIAN_CODENAME}/updates main" >> /etc/apt/sources.list; \
+    fi
+
 RUN apt-get update \
     && apt-get upgrade -qy \
     && apt-get dist-upgrade -qy \
