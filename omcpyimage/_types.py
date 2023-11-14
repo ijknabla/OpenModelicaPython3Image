@@ -70,6 +70,7 @@ class Debian(enum.Enum):
     stretch = enum.auto()
     buster = enum.auto()
     bullseye = enum.auto()
+    bookworm = enum.auto()
 
     def __str__(self) -> str:
         assert isinstance(self.name, str)
