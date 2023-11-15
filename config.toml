@@ -1,5 +1,5 @@
 omc = [ "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22",]
-py = [ "3.6", "3.7", "3.8", "3.9", "3.10", "3.11",]
+py = [ "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12",]
 debian = [ "stretch", "buster", "bullseye", "bookworm",]
 
 [cache.py-images."python:3.6-stretch"]
@@ -96,4 +96,20 @@ exists = true
 
 [cache.py-images."python:3.11-bookworm"]
 updated-at = 2023-11-14T02:39:10.596467
+exists = true
+
+[cache.py-images."python:3.12-stretch"]
+updated-at = 2023-11-15T04:01:42.079514
+exists = false
+
+[cache.py-images."python:3.12-buster"]
+updated-at = 2023-11-15T04:01:42.081223
+exists = false
+
+[cache.py-images."python:3.12-bullseye"]
+updated-at = 2023-11-15T04:01:42.082658
+exists = true
+
+[cache.py-images."python:3.12-bookworm"]
+updated-at = 2023-11-15T04:01:42.085293
 exists = true
