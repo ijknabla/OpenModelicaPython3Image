@@ -27,7 +27,5 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m user \
-    && usermod -aG sudo user \
-    && sed -i -E '/^%sudo\s+ALL=\(ALL:ALL\)\s+ALL\s*$/a %sudo   ALL=NOPASSWD: ALL' /etc/sudoers
+RUN useradd -m user
 USER user
