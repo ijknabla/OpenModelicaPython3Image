@@ -8,8 +8,6 @@ ARG DEBIAN_CODENAME
 
 LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 
-RUN useradd -m user
-
 RUN if [ "${DEBIAN_CODENAME}" = "stretch" ]; then \
         sed -ri 's/^([^#]+)/# \1/g' /etc/apt/sources.list \
         && echo "deb http://archive.debian.org/debian/ ${DEBIAN_CODENAME} main" >> /etc/apt/sources.list \
@@ -28,3 +26,6 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -qy omc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m user
+USER user
