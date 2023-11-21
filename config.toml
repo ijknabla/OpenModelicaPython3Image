@@ -50,10 +50,6 @@ exists = true
 updated-at = 2023-11-17T00:36:58.407743
 exists = true
 
-[cache.py-images."python:3.10-buster"]
-updated-at = 2023-11-17T00:36:58.409724
-exists = true
-
 [cache.py-images."python:3.10-bullseye"]
 updated-at = 2023-11-17T00:36:58.410522
 exists = true
@@ -113,3 +109,7 @@ exists = false
 [cache.py-images."python:3.12-buster"]
 updated-at = 2023-11-21T03:18:56.501021
 exists = false
+
+[cache.py-images."python:3.10-buster"]
+updated-at = 2023-11-21T08:33:53.422368
+exists = true
