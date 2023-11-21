@@ -28,4 +28,3 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m user
-USER user
