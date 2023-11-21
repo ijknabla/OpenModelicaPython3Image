@@ -129,8 +129,8 @@ class ImageBuilder:
             print(f"run {' '.join(docker_build)}")
             process = await create_subprocess_exec(
                 *docker_build,
-                stdout=PIPE,
-                stderr=PIPE,
+                # stdout=PIPE,
+                # stderr=PIPE,
             )
             _, err = await process.communicate()
             retcode = process.returncode
