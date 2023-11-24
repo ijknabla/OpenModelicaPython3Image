@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openmodelicawithpythonimage"
-version = "0.0.0"
+version = "0"  # https://github.com/tiangolo/poetry-version-plugin/tree/main#readme
 description = ""
 authors = ["ijknabla <ijknabla@gmail.com>"]
 license = "MIT"
