@@ -19,6 +19,7 @@ from ._api import is_config, sort_cache
 @click.option("--limit", type=int)
 @run_coroutine
 async def main(config_path: Path, limit: int | None) -> None:
+    return
     config = toml.loads(config_path.read_text(encoding="utf-8"))
     assert is_config(config)
 
