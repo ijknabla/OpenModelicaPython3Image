@@ -1,7 +1,7 @@
 import re
-from typing import Annotated, ClassVar, NamedTuple
+from typing import Annotated, NamedTuple
 
-from pydantic import BaseModel, PlainSerializer, PlainValidator
+from pydantic import BaseModel, Field, PlainSerializer, PlainValidator
 
 
 class ShortVersion(NamedTuple):
@@ -60,6 +60,5 @@ AnnotatedLongVersion = Annotated[
 
 
 class Config(BaseModel):
-    openmodelica: list[AnnotatedLongVersion]
-    openmodelica_image: ClassVar = "openmodelica/openmodelica"
+    from_: list[str] = Field(alias="from")
     python: list[AnnotatedShortVersion]
