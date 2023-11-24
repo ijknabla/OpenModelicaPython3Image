@@ -29,6 +29,9 @@ pyproject-flake8 = "^6.0.0.post1"
 types-toml = "^0.10.8.2"
 types-setuptools = "^67.1.0.2"
 
+[tool.poetry-version-plugin]
+source = "init"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
