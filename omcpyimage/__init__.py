@@ -33,7 +33,7 @@ from pkg_resources import resource_filename
 from ._api import is_debian, is_long_version
 from ._types import Config, Debian, LongVersion, Version
 
-__version__ = "0.0.0"
+__version__ = "0.0.1a0.dev0"
 
 P = ParamSpec("P")
 T = TypeVar("T")
