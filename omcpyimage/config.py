@@ -31,34 +31,6 @@ AnnotatedShortVersion = Annotated[
 ]
 
 
-class LongVersion(NamedTuple):
-    major: int
-    minor: int
-    patch: int
-
-
-@PlainValidator
-def _validate_long_version(v: LongVersion | str) -> LongVersion:
-    if isinstance(v, LongVersion):
-        return v
-    if isinstance(v, str):
-        if (matched := re.match(r"(\d+)\.(\d+)\.(\d+)", v)) is None:
-            raise ValueError(v)
-        return LongVersion(*map(int, matched.groups()))
-
-    raise ValueError(v)
-
-
-@PlainSerializer
-def _serialize_long_version(v: ShortVersion) -> str:
-    return f"{v.major}.{v.minor}"
-
-
-AnnotatedLongVersion = Annotated[
-    LongVersion, _validate_long_version, _serialize_long_version
-]
-
-
 class Config(BaseModel):
     from_: list[str] = Field(alias="from")
     python: list[AnnotatedShortVersion]
