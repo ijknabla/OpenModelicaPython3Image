@@ -9,7 +9,7 @@ class LongVersion(NamedTuple):
 
     @classmethod
     def parse(cls, s: str) -> Self:
-        if (matched := re.match(r"v?(\d+)\.(\d+)\.(\d+)", s)) is None:
+        if (matched := re.search(r"v?(\d+)\.(\d+)\.(\d+)", s)) is None:
             raise ValueError(s)
         return cls(*map(int, matched.groups()))
 
