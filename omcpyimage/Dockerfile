@@ -32,6 +32,9 @@ RUN mv /etc/apt/sources.list.d/openmodelica.list /etc/apt/sources.list.d/openmod
         libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list
+    && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list \
+    && useradd -m user \
+    && usermod -aG sudo user \
+    && sed -i -E '/^%sudo\s+ALL=\(ALL:ALL\)\s+ALL\s*$/a %sudo   ALL=NOPASSWD: ALL' /etc/sudoers
 
 COPY --from=0 /usr/local /usr/local
