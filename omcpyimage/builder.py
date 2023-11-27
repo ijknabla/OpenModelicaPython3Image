@@ -20,15 +20,15 @@ async def pull(image: str) -> None:
 
 
 async def build(
-    image: str,
+    build_image: str,
+    openmodelica_image: str,
     python: LongVersion,
     lock: Callable[[], AbstractAsyncContextManager[None]] | None = None,
 ) -> str:
-    openmodelica = LongVersion.parse(image)
+    openmodelica = LongVersion.parse(openmodelica_image)
     dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
 
     tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
-    ubuntu = await get_ubuntu_image(image)
 
     async with AsyncExitStack() as stack:
         if lock is not None:
@@ -40,8 +40,8 @@ async def build(
                     "build",
                     f"{dockerfile.parent}",
                     f"--tag={tag}",
-                    f"--build-arg=BUILD_IMAGE={ubuntu}",
-                    f"--build-arg=OPENMODELICA_IMAGE={image}",
+                    f"--build-arg=BUILD_IMAGE={build_image}",
+                    f"--build-arg=OPENMODELICA_IMAGE={openmodelica_image}",
                     f"--build-arg=PYTHON_VERSION={python}",
                 )
             )
