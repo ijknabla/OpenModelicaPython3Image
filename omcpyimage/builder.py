@@ -3,7 +3,6 @@ from asyncio import create_subprocess_exec
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import lxml.html
 from aiohttp import ClientSession
@@ -21,26 +20,20 @@ async def pull(image: str) -> None:
 
 async def build(image: str, python: LongVersion) -> str:
     openmodelica = LongVersion.parse(image)
-    dockerfile = Path(resource_filename(__name__, "Dockerfile.in")).resolve()
+    dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
 
     tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
 
     async with AsyncExitStack() as stack:
-        directory = Path(stack.enter_context(TemporaryDirectory()))
-        (directory / dockerfile.stem).write_text(
-            dockerfile.read_text().format(
-                OPENMODELICA_IMAGE=image, PYTHON_VERSION=python
-            )
-        )
-
         process = await stack.enter_async_context(
             terminating(
                 await create_subprocess_exec(
                     "docker",
                     "build",
-                    f"{directory}",
+                    f"{dockerfile.parent}",
                     f"--tag={tag}",
                     f"--build-arg=OPENMODELICA_IMAGE={image}",
+                    f"--build-arg=PYTHON_VERSION={python}",
                 )
             )
         )

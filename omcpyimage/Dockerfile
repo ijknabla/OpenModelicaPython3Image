@@ -1,10 +1,9 @@
 # syntax=docker/dockerfile:1
-
-
 ARG BUILD_IMAGE="ubuntu:22.04"
 ARG OPENMODELICA_IMAGE="openmodelica/openmodelica:v1.22.0-minimal"
 
 FROM ${BUILD_IMAGE}
+LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 
 RUN apt update && env DEBIAN_FRONTEND=noninteractive apt install -qy tzdata
 RUN apt update \
@@ -19,11 +18,19 @@ RUN cd /usr/src/Python-${PYTHON_VERSION}/ && ./configure --enable-optimizations
 RUN make -C/usr/src/Python-${PYTHON_VERSION}/ -j4 altinstall
 
 FROM ${OPENMODELICA_IMAGE}
+LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 
-RUN apt update \
+RUN mv /etc/apt/sources.list.d/openmodelica.list /etc/apt/sources.list.d/openmodelica.list.bak \
+    && apt update \
+    && env DEBIAN_FRONTEND=noninteractive apt install -qy \
+        tzdata \
     && apt install -qy \
-        libssl zlib1g \
-        libbz2 libreadline libsqlite3 curl \
-        libncursesw5 xz-utils tk libxml2 libxmlsec1 libffi liblzma
+        ca-certificates sudo \
+        libssl-dev zlib1g-dev \
+        libbz2-dev libreadline-dev libsqlite3-dev curl \
+        libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list
 
 COPY --from=0 /usr/local /usr/local
