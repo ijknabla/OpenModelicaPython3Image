@@ -52,6 +52,12 @@ async def build(
     return tag
 
 
+async def push(image: str) -> None:
+    process = await create_subprocess_exec("docker", "push", image)
+    async with terminating(process):
+        assert await process.wait() == 0
+
+
 async def get_ubuntu_image(openmodelica_image: str) -> str:
     async with terminating(
         await create_subprocess_exec(

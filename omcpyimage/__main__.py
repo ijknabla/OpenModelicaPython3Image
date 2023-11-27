@@ -1,4 +1,4 @@
-from asyncio import Lock, Semaphore, TimeoutError, gather, wait_for
+from asyncio import Lock, TimeoutError, gather, wait_for
 from collections import defaultdict
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack, asynccontextmanager
@@ -8,7 +8,7 @@ from typing import IO
 import click
 import toml
 
-from . import ImageBuilder, builder, run_coroutine
+from . import builder, run_coroutine
 from .config import Config
 from .types import LongVersion
 
@@ -23,7 +23,6 @@ from .types import LongVersion
 @run_coroutine
 async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
-    lock = Semaphore(max(limit, 1))
 
     build_images = {
         image: await builder.get_ubuntu_image(image) for image in config.from_
@@ -48,15 +47,7 @@ async def main(config_io: IO[str], limit: int) -> None:
         )
     )
     for tag in sorted(tags):
-        print(tag)
-
-    return
-
-    if limit is not None:
-        lock = Semaphore(limit)
-    else:
-        lock = None
-    await ImageBuilder(config).build(lock)
+        await builder.push(tag)
 
 
 @asynccontextmanager
