@@ -1,5 +1,6 @@
 import re
 from asyncio import create_subprocess_exec
+from asyncio.subprocess import PIPE
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -23,6 +24,7 @@ async def build(image: str, python: LongVersion) -> str:
     dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
 
     tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
+    ubuntu = await ubuntu_version(image)
 
     async with AsyncExitStack() as stack:
         process = await stack.enter_async_context(
@@ -32,6 +34,7 @@ async def build(image: str, python: LongVersion) -> str:
                     "build",
                     f"{dockerfile.parent}",
                     f"--tag={tag}",
+                    f"--build-arg=BUILD_IMAGE={ubuntu}",
                     f"--build-arg=OPENMODELICA_IMAGE={image}",
                     f"--build-arg=PYTHON_VERSION={python}",
                 )
@@ -41,6 +44,30 @@ async def build(image: str, python: LongVersion) -> str:
         assert await process.wait() == 0
 
     return tag
+
+
+async def ubuntu_version(image: str) -> str:
+    async with terminating(
+        await create_subprocess_exec(
+            "docker",
+            "run",
+            image,
+            "cat",
+            "/etc/lsb-release",
+            stdout=PIPE,
+        )
+    ) as process:
+        stdout, _ = await process.communicate()
+
+        if (
+            matched := re.search(
+                r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8")
+            )
+        ) is not None:
+            release = matched.group(1)
+            return f"ubuntu:{release}"
+
+    raise ValueError(image)
 
 
 async def search_python_version(
