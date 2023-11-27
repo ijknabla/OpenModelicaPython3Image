@@ -21,8 +21,6 @@ async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
     lock = Semaphore(max(limit, 1))
 
-    await gather(*(builder.pull(image) for image in config.from_))
-
     tags = await gather(
         *(
             builder.build(image, LongVersion(3, 10, 13))
