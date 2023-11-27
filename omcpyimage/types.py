@@ -1,6 +1,8 @@
 import re
 from typing import NamedTuple, Self
 
+from .config import ShortVersion
+
 
 class LongVersion(NamedTuple):
     major: int
@@ -15,3 +17,6 @@ class LongVersion(NamedTuple):
 
     def __str__(self) -> str:
         return f"{self.major}.{self.minor}.{self.patch}"
+
+    def as_short(self) -> ShortVersion:
+        return ShortVersion(major=self.major, minor=self.minor)

@@ -15,17 +15,17 @@ async def pull(image: str) -> None:
         assert await process.wait() == 0
 
 
-async def build(image: str) -> str:
-    version = LongVersion.parse(image)
+async def build(image: str, python: LongVersion) -> str:
+    openmodelica = LongVersion.parse(image)
     dockerfile = Path(resource_filename(__name__, "Dockerfile.in")).resolve()
 
-    tag = f"ijknabla/openmodelica:v{version}-python"
+    tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
 
     async with AsyncExitStack() as stack:
         directory = Path(stack.enter_context(TemporaryDirectory()))
         (directory / dockerfile.stem).write_text(
             dockerfile.read_text().format(
-                OPENMODELICA_IMAGE=image, PYTHON_VERSION="3.10.13"
+                OPENMODELICA_IMAGE=image, PYTHON_VERSION=python
             )
         )
 

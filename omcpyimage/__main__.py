@@ -6,6 +6,7 @@ import toml
 
 from . import ImageBuilder, builder, run_coroutine
 from .config import Config
+from .types import LongVersion
 
 
 @click.command
@@ -22,7 +23,12 @@ async def main(config_io: IO[str], limit: int) -> None:
 
     await gather(*(builder.pull(image) for image in config.from_))
 
-    tags = await gather(*(builder.build(image) for image in config.from_))
+    tags = await gather(
+        *(
+            builder.build(image, LongVersion(3, 10, 13))
+            for image in config.from_
+        )
+    )
     for tag in sorted(tags):
         print(tag)
 

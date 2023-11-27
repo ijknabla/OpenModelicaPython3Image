@@ -8,6 +8,9 @@ class ShortVersion(NamedTuple):
     major: int
     minor: int
 
+    def __str__(self) -> str:
+        return f"{self.major}.{self.minor}"
+
 
 @PlainValidator
 def _validate_short_version(v: ShortVersion | str) -> ShortVersion:
