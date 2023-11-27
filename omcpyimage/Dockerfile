@@ -19,7 +19,7 @@ RUN mv /etc/apt/sources.list.d/openmodelica.list /etc/apt/sources.list.d/openmod
     && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list
 
 RUN wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz -O - | tar zxvf - -C /usr/src \
-   && (cd /usr/src/Python-3.10.13/ && ./configure --enable-optimizations && make altinstall) \
+   && (cd /usr/src/Python-3.10.13/ && ./configure --enable-optimizations && make -j4 altinstall) \
    && rm -rf /usr/src/Python-3.10.13/
 
 RUN apt purge -qy \
