@@ -46,8 +46,9 @@ async def main(config_io: IO[str], limit: int) -> None:
             for version in python_versions
         )
     )
+    await gather(*(builder.push(tag) for tag in tags))
     for tag in sorted(tags):
-        await builder.push(tag)
+        print(tag)
 
 
 @asynccontextmanager
