@@ -21,7 +21,10 @@ async def main(config_io: IO[str], limit: int) -> None:
     lock = Semaphore(max(limit, 1))
 
     await gather(*(builder.pull(image) for image in config.from_))
-    await gather(*(builder.build(image) for image in config.from_))
+
+    tags = await gather(*(builder.build(image) for image in config.from_))
+    for tag in sorted(tags):
+        print(tag)
 
     return
 
