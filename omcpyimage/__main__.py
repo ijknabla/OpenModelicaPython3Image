@@ -6,7 +6,6 @@ import toml
 
 from . import ImageBuilder, builder, run_coroutine
 from .config import Config
-from .types import LongVersion
 
 
 @click.command
@@ -21,10 +20,16 @@ async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
     lock = Semaphore(max(limit, 1))
 
+    python_versions = [
+        max([lv async for lv in builder.search_python_version(sv)])
+        for sv in config.python
+    ]
+
     tags = await gather(
         *(
-            builder.build(image, LongVersion(3, 10, 13))
+            builder.build(image, version)
             for image in config.from_
+            for version in python_versions
         )
     )
     for tag in sorted(tags):
