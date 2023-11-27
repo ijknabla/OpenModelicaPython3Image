@@ -1,5 +1,7 @@
 from asyncio import create_subprocess_exec
+from contextlib import AsyncExitStack
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pkg_resources import resource_filename
 
@@ -15,18 +17,30 @@ async def pull(image: str) -> None:
 
 async def build(image: str) -> str:
     version = LongVersion.parse(image)
-    dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
+    dockerfile = Path(resource_filename(__name__, "Dockerfile.in")).resolve()
 
     tag = f"ijknabla/openmodelica:v{version}-python"
 
-    process = await create_subprocess_exec(
-        "docker",
-        "build",
-        f"{dockerfile.parent}",
-        f"--tag={tag}",
-        f"--build-arg=OPENMODELICA_IMAGE={image}",
-    )
-    async with terminating(process):
+    async with AsyncExitStack() as stack:
+        directory = Path(stack.enter_context(TemporaryDirectory()))
+        (directory / dockerfile.stem).write_text(
+            dockerfile.read_text().format(
+                OPENMODELICA_IMAGE=image, PYTHON_VERSION="3.10.13"
+            )
+        )
+
+        process = await stack.enter_async_context(
+            terminating(
+                await create_subprocess_exec(
+                    "docker",
+                    "build",
+                    f"{directory}",
+                    f"--tag={tag}",
+                    f"--build-arg=OPENMODELICA_IMAGE={image}",
+                )
+            )
+        )
+
         assert await process.wait() == 0
 
     return tag
