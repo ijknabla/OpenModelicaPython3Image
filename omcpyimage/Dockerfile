@@ -34,7 +34,7 @@ RUN mv /etc/apt/sources.list.d/openmodelica.list /etc/apt/sources.list.d/openmod
     && rm -rf /var/lib/apt/lists/* \
     && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list
 RUN useradd -m user \
-    && usermod -aG sudo user \
+    && usermod -g 0 -G sudo user \
     && sed -i -E '/^%sudo\s+ALL=\(ALL:ALL\)\s+ALL\s*$/a %sudo   ALL=NOPASSWD: ALL' /etc/sudoers
 
 COPY --from=0 /usr/local /usr/local
