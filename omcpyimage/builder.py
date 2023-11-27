@@ -1,8 +1,8 @@
 import re
 from asyncio import create_subprocess_exec
 from asyncio.subprocess import PIPE
-from collections.abc import AsyncGenerator
-from contextlib import AsyncExitStack
+from collections.abc import AsyncGenerator, Callable
+from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from pathlib import Path
 
 import lxml.html
@@ -19,14 +19,20 @@ async def pull(image: str) -> None:
         assert await process.wait() == 0
 
 
-async def build(image: str, python: LongVersion) -> str:
+async def build(
+    image: str,
+    python: LongVersion,
+    lock: Callable[[], AbstractAsyncContextManager[None]] | None = None,
+) -> str:
     openmodelica = LongVersion.parse(image)
     dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
 
     tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
-    ubuntu = await ubuntu_version(image)
+    ubuntu = await get_ubuntu_image(image)
 
     async with AsyncExitStack() as stack:
+        if lock is not None:
+            await stack.enter_async_context(lock())
         process = await stack.enter_async_context(
             terminating(
                 await create_subprocess_exec(
@@ -46,12 +52,12 @@ async def build(image: str, python: LongVersion) -> str:
     return tag
 
 
-async def ubuntu_version(image: str) -> str:
+async def get_ubuntu_image(openmodelica_image: str) -> str:
     async with terminating(
         await create_subprocess_exec(
             "docker",
             "run",
-            image,
+            openmodelica_image,
             "cat",
             "/etc/lsb-release",
             stdout=PIPE,
@@ -67,7 +73,7 @@ async def ubuntu_version(image: str) -> str:
             release = matched.group(1)
             return f"ubuntu:{release}"
 
-    raise ValueError(image)
+    raise ValueError(openmodelica_image)
 
 
 async def search_python_version(
