@@ -5,13 +5,14 @@ from asyncio import Lock, TimeoutError, gather, wait_for
 from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
-from itertools import islice
+from operator import itemgetter
 from typing import IO, Any, ParamSpec, TypeVar
 
 import click
 import toml
 
 from . import builder
+from .builder import OpenmodelicaPythonImage
 from .config import Config
 
 P = ParamSpec("P")
@@ -39,44 +40,44 @@ def execute_coroutine(
 async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
 
-    python_versions = await builder.search_python_versions(config.python)
+    pythons = await builder.search_python_versions(config.python)
 
-    categoeized_by_ubuntu = await builder.categorize_by_ubuntu_release(
+    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(
         config.from_
     )
 
-    first = [
-        (ubuntu_image, openmodelica_image, python_version)
-        for ubuntu_image, categorized in categoeized_by_ubuntu.items()
-        for openmodelica_image in islice(categorized, 1)
-        for python_version in islice(python_versions, 1)
-    ]
-    second = [
-        (ubuntu_image, openmodelica_image, python_version)
-        for ubuntu_image, categorized in categoeized_by_ubuntu.items()
-        for openmodelica_image in islice(categorized, 1)
-        for python_version in islice(python_versions, 1, None)
-    ]
-    third = [
-        (ubuntu_image, openmodelica_image, python_version)
-        for ubuntu_image, categorized in categoeized_by_ubuntu.items()
-        for openmodelica_image in islice(categorized, 1, None)
-        for python_version in python_versions
-    ]
+    images = {
+        OpenmodelicaPythonImage(
+            base="ijknabla/openmodelica",
+            ubuntu=ubuntu,
+            openmodelica=openmodelica,
+            python=python,
+        )
+        for ubuntu, openmodelicas in ubuntu_openmodelica.items()
+        for openmodelica in openmodelicas
+        for python in pythons
+    }
 
-    # locks = defaultdict[str | LongVersion, Lock](Lock)
+    python0 = {image for image in images if image.python == pythons[0]}
+    ubuntu0 = {
+        image
+        for image in images
+        if image.openmodelica
+        in map(itemgetter(0), ubuntu_openmodelica.values())
+    }
+
+    group0 = images & ubuntu0 & python0
+    group1 = images & ubuntu0 - python0
+    group2 = images - ubuntu0
+
+    assert (group0 | group1 | group2) == images
 
     tags = list[str]()
-    for group in [first, second, third]:
+    for group in [group0, group1, group2]:
         tags += await gather(
             *(
-                builder.build(
-                    ubuntu_image,
-                    openmodelica_image,
-                    python_version,
-                    # partial(lock_all, locks[ubuntu_image], locks[python_version]),  # noqa: E501
-                )
-                for ubuntu_image, openmodelica_image, python_version in group
+                builder.build(image.ubuntu, image.openmodelica, image.python)
+                for image in sorted(group)
             )
         )
     await gather(*(builder.push(tag) for tag in tags))
