@@ -7,6 +7,7 @@ from collections import ChainMap, defaultdict
 from collections.abc import AsyncGenerator, Callable, Iterable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from pathlib import Path
+from typing import NamedTuple
 
 import lxml.html
 from aiohttp import ClientSession
@@ -14,6 +15,21 @@ from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
 from .util import terminating
+
+
+class OpenmodelicaPythonImage(NamedTuple):
+    base: str
+    ubuntu: str
+    openmodelica: str
+    python: LongVersion
+
+    @property
+    def tag(self) -> str:
+        openmodelica = LongVersion.parse(self.openmodelica)
+        return f"v{openmodelica}-python{self.python.as_short()}"
+
+    def __str__(self) -> str:
+        return f"{self.base}:{self.tag}"
 
 
 async def pull(image: str) -> None:
