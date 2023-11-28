@@ -4,8 +4,8 @@ import re
 from asyncio import create_subprocess_exec, gather
 from asyncio.subprocess import PIPE
 from collections import ChainMap, defaultdict
-from collections.abc import AsyncGenerator, Callable, Iterable
-from contextlib import AbstractAsyncContextManager, AsyncExitStack
+from collections.abc import AsyncGenerator, Iterable
+from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import NamedTuple
 
@@ -31,55 +31,35 @@ class OpenmodelicaPythonImage(NamedTuple):
     def __str__(self) -> str:
         return f"{self.base}:{self.tag}"
 
+    async def pull(self) -> None:
+        process = await create_subprocess_exec("docker", "pull", f"{self}")
+        async with terminating(process):
+            await process.wait()
 
-async def pull(image: str) -> None:
-    process = await create_subprocess_exec("docker", "pull", image)
-    async with terminating(process):
-        assert await process.wait() == 0
+    async def build(self) -> None:
+        dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
 
-
-async def build(
-    build_image: str,
-    openmodelica_image: str,
-    python: LongVersion,
-    lock: Callable[[], AbstractAsyncContextManager[None]] | None = None,
-) -> str:
-    openmodelica = LongVersion.parse(openmodelica_image)
-    dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
-
-    tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
-
-    async with AsyncExitStack() as stack:
-        pull = await stack.enter_async_context(
-            terminating(await create_subprocess_exec("docker", "pull", tag))
-        )
-        await pull.wait()
-
-        if lock is not None:
-            await stack.enter_async_context(lock())
-        process = await stack.enter_async_context(
-            terminating(
-                await create_subprocess_exec(
-                    "docker",
-                    "build",
-                    f"{dockerfile.parent}",
-                    f"--tag={tag}",
-                    f"--build-arg=BUILD_IMAGE={build_image}",
-                    f"--build-arg=OPENMODELICA_IMAGE={openmodelica_image}",
-                    f"--build-arg=PYTHON_VERSION={python}",
+        async with AsyncExitStack() as stack:
+            process = await stack.enter_async_context(
+                terminating(
+                    await create_subprocess_exec(
+                        "docker",
+                        "build",
+                        f"{dockerfile.parent}",
+                        f"--tag={self}",
+                        f"--build-arg=BUILD_IMAGE={self.ubuntu}",
+                        f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
+                        f"--build-arg=PYTHON_VERSION={self.python}",
+                    )
                 )
             )
-        )
 
-        assert await process.wait() == 0
+            assert await process.wait() == 0
 
-    return tag
-
-
-async def push(image: str) -> None:
-    process = await create_subprocess_exec("docker", "push", image)
-    async with terminating(process):
-        assert await process.wait() == 0
+    async def push(self) -> None:
+        process = await create_subprocess_exec("docker", "push", f"{self}")
+        async with terminating(process):
+            assert await process.wait() == 0
 
 
 async def search_python_versions(

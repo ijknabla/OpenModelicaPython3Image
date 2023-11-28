@@ -72,17 +72,12 @@ async def main(config_io: IO[str], limit: int) -> None:
 
     assert (group0 | group1 | group2) == images
 
-    tags = list[str]()
+    await gather(*(image.pull() for image in images))
     for group in [group0, group1, group2]:
-        tags += await gather(
-            *(
-                builder.build(image.ubuntu, image.openmodelica, image.python)
-                for image in sorted(group)
-            )
-        )
-    await gather(*(builder.push(tag) for tag in tags))
-    for tag in sorted(tags):
-        print(tag)
+        await gather(*(image.build() for image in sorted(group)))
+    await gather(*(image.push() for image in images))
+    for image in sorted(images):
+        print(image)
 
 
 @asynccontextmanager
