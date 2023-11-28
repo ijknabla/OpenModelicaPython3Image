@@ -34,6 +34,11 @@ async def build(
     tag = f"ijknabla/openmodelica:v{openmodelica}-python{python.as_short()}"
 
     async with AsyncExitStack() as stack:
+        pull = await stack.enter_async_context(
+            terminating(await create_subprocess_exec("docker", "pull", tag))
+        )
+        await pull.wait()
+
         if lock is not None:
             await stack.enter_async_context(lock())
         process = await stack.enter_async_context(
