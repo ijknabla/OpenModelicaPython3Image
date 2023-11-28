@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import re
 from asyncio import create_subprocess_exec
 from asyncio.subprocess import PIPE
-from collections.abc import AsyncGenerator, Callable
+from collections import defaultdict
+from collections.abc import AsyncGenerator, Callable, Iterable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from pathlib import Path
 
@@ -82,29 +85,17 @@ async def get_ubuntu_image(openmodelica_image: str) -> str:
     raise ValueError(openmodelica_image)
 
 
-async def search_python_version(
-    short: ShortVersion,
+async def search_python_versions(
+    shorts: Iterable[ShortVersion],
     source_uri: str = "https://www.python.org/downloads/source/",
-) -> AsyncGenerator[LongVersion, None]:
-    pattern = re.compile(
-        r"https?://www\.python\.org/ftp/python/"
-        rf"{re.escape(str(short))}\.\d+/"
-        rf"Python\-({re.escape(str(short))}\.\d+).tgz",
-    )
-
-    async with AsyncExitStack() as stack:
-        session = await stack.enter_async_context(ClientSession())
-        response = await stack.enter_async_context(session.get(source_uri))
-
-        tree = lxml.html.fromstring(await response.text())
-
-        for href in tree.xpath("//a/@href"):
-            if (matched := pattern.match(href)) is not None:
-                for group in matched.groups():
-                    yield LongVersion.parse(group)
+) -> list[LongVersion]:
+    longs = defaultdict[ShortVersion, list[LongVersion]](list)
+    async for long in _iter_python_version(source_uri):
+        longs[long.as_short()].append(long)
+    return [max(longs[short]) for short in sorted(longs.keys() & set(shorts))]
 
 
-async def iter_python_version(
+async def _iter_python_version(
     source_uri: str = "https://www.python.org/downloads/source/",
 ) -> AsyncGenerator[LongVersion, None]:
     pattern = re.compile(

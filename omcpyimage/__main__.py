@@ -40,13 +40,11 @@ def execute_coroutine(
 async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
 
+    python_versions = await builder.search_python_versions(config.python)
+
     build_images = {
         image: await builder.get_ubuntu_image(image) for image in config.from_
     }
-    python_versions = [
-        max([lv async for lv in builder.search_python_version(sv)])
-        for sv in config.python
-    ]
 
     locks = defaultdict[str | LongVersion, Lock](Lock)
 
