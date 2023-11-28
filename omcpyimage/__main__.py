@@ -1,16 +1,32 @@
+from __future__ import annotations
+
+import asyncio
 from asyncio import Lock, TimeoutError, gather, wait_for
-from collections import defaultdict
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import AsyncExitStack, asynccontextmanager
-from functools import partial
-from typing import IO
+from functools import wraps
+from operator import itemgetter
+from typing import IO, Any, ParamSpec, TypeVar
 
 import click
 import toml
 
-from . import builder, run_coroutine
+from . import builder
+from .builder import OpenmodelicaPythonImage
 from .config import Config
-from .types import LongVersion
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def execute_coroutine(
+    f: Callable[P, Coroutine[Any, Any, T]]
+) -> Callable[P, T]:
+    @wraps(f)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        return asyncio.run(f(*args, **kwargs))
+
+    return wrapped
 
 
 @click.command
@@ -20,35 +36,48 @@ from .types import LongVersion
     type=click.File(mode="r", encoding="utf-8"),
 )
 @click.option("--limit", type=int, default=1)
-@run_coroutine
+@execute_coroutine
 async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
 
-    build_images = {
-        image: await builder.get_ubuntu_image(image) for image in config.from_
-    }
-    python_versions = [
-        max([lv async for lv in builder.search_python_version(sv)])
-        for sv in config.python
-    ]
+    pythons = await builder.search_python_versions(config.python)
 
-    locks = defaultdict[str | LongVersion, Lock](Lock)
-
-    tags = await gather(
-        *(
-            builder.build(
-                build_image,
-                openmodelica_image,
-                version,
-                partial(lock_all, locks[build_image], locks[version]),
-            )
-            for openmodelica_image, build_image in build_images.items()
-            for version in python_versions
-        )
+    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(
+        config.from_
     )
-    await gather(*(builder.push(tag) for tag in tags))
-    for tag in sorted(tags):
-        print(tag)
+
+    images = {
+        OpenmodelicaPythonImage(
+            base="ijknabla/openmodelica",
+            ubuntu=ubuntu,
+            openmodelica=openmodelica,
+            python=python,
+        )
+        for ubuntu, openmodelicas in ubuntu_openmodelica.items()
+        for openmodelica in openmodelicas
+        for python in pythons
+    }
+
+    python0 = {image for image in images if image.python == pythons[0]}
+    ubuntu0 = {
+        image
+        for image in images
+        if image.openmodelica
+        in map(itemgetter(0), ubuntu_openmodelica.values())
+    }
+
+    group0 = images & ubuntu0 & python0
+    group1 = images & ubuntu0 - python0
+    group2 = images - ubuntu0
+
+    assert (group0 | group1 | group2) == images
+
+    await gather(*(image.pull() for image in images))
+    for group in [group0, group1, group2]:
+        await gather(*(image.build() for image in sorted(group)))
+    await gather(*(image.push() for image in images))
+    for image in sorted(images):
+        print(image)
 
 
 @asynccontextmanager

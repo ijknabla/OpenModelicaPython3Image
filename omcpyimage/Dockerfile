@@ -6,8 +6,7 @@ FROM ${BUILD_IMAGE}
 LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 
 RUN apt update && env DEBIAN_FRONTEND=noninteractive apt install -qy \
-        tzdata
-RUN apt update && apt install -qy \
+        ca-certificates tzdata \
         build-essential libssl-dev zlib1g-dev \
         libbz2-dev libreadline-dev libsqlite3-dev curl \
         libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
@@ -24,16 +23,14 @@ LABEL maintainer "ijknabla <ijknabla@gmail.com>"
 RUN mv /etc/apt/sources.list.d/openmodelica.list /etc/apt/sources.list.d/openmodelica.list.bak \
     && apt update \
     && env DEBIAN_FRONTEND=noninteractive apt install -qy \
-        tzdata \
-    && apt install -qy \
-        ca-certificates sudo \
+        ca-certificates sudo tzdata \
         libssl-dev zlib1g-dev \
         libbz2-dev libreadline-dev libsqlite3-dev curl \
         libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list
-RUN useradd -m user \
+    && mv /etc/apt/sources.list.d/openmodelica.list.bak /etc/apt/sources.list.d/openmodelica.list \
+    && useradd -m user \
     && usermod -aG sudo user \
     && sed -i -E '/^%sudo\s+ALL=\(ALL:ALL\)\s+ALL\s*$/a %sudo   ALL=NOPASSWD: ALL' /etc/sudoers
 
