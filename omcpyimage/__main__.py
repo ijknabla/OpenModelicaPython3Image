@@ -1,37 +1,101 @@
-from asyncio import Semaphore
-from pathlib import Path
+from __future__ import annotations
+
+import asyncio
+from asyncio import Lock, TimeoutError, gather, wait_for
+from collections.abc import AsyncGenerator, Callable, Coroutine
+from contextlib import AsyncExitStack, asynccontextmanager
+from functools import wraps
+from operator import itemgetter
+from typing import IO, Any, ParamSpec, TypeVar
 
 import click
 import toml
 
-from . import ImageBuilder, run_coroutine
-from ._api import is_config, sort_cache
+from . import builder
+from .builder import OpenmodelicaPythonImage
+from .config import Config
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def execute_coroutine(
+    f: Callable[P, Coroutine[Any, Any, T]]
+) -> Callable[P, T]:
+    @wraps(f)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        return asyncio.run(f(*args, **kwargs))
+
+    return wrapped
 
 
 @click.command
 @click.argument(
-    "config_path",
+    "config_io",
     metavar="CONFIG.TOML",
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, path_type=Path
-    ),
+    type=click.File(mode="r", encoding="utf-8"),
 )
-@click.option("--limit", type=int)
-@run_coroutine
-async def main(config_path: Path, limit: int | None) -> None:
-    config = toml.loads(config_path.read_text(encoding="utf-8"))
-    assert is_config(config)
+@click.option("--limit", type=int, default=1)
+@execute_coroutine
+async def main(config_io: IO[str], limit: int) -> None:
+    config = Config.model_validate(toml.load(config_io))
 
-    try:
-        if limit is not None:
-            lock = Semaphore(limit)
-        else:
-            lock = None
-        await ImageBuilder(config).build(lock)
-    finally:
-        assert is_config(config)
-        sort_cache(config)
-        config_path.write_text(toml.dumps(config), encoding="utf-8")
+    pythons = await builder.search_python_versions(config.python)
+
+    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(
+        config.from_
+    )
+
+    images = {
+        OpenmodelicaPythonImage(
+            base="ijknabla/openmodelica",
+            ubuntu=ubuntu,
+            openmodelica=openmodelica,
+            python=python,
+        )
+        for ubuntu, openmodelicas in ubuntu_openmodelica.items()
+        for openmodelica in openmodelicas
+        for python in pythons
+    }
+
+    python0 = {image for image in images if image.python == pythons[0]}
+    ubuntu0 = {
+        image
+        for image in images
+        if image.openmodelica
+        in map(itemgetter(0), ubuntu_openmodelica.values())
+    }
+
+    group0 = images & ubuntu0 & python0
+    group1 = images & ubuntu0 - python0
+    group2 = images - ubuntu0
+
+    assert (group0 | group1 | group2) == images
+
+    await gather(*(image.pull() for image in images))
+    for group in [group0, group1, group2]:
+        await gather(*(image.build() for image in sorted(group)))
+    await gather(*(image.push() for image in images))
+    for image in sorted(images):
+        print(image)
+
+
+@asynccontextmanager
+async def lock_all(*locks: Lock) -> AsyncGenerator[None, None]:
+    async with AsyncExitStack() as stack:
+        while True:
+            lock_all = gather(
+                *(stack.enter_async_context(lock) for lock in locks)
+            )
+
+            try:
+                await wait_for(lock_all, 1e-3)
+                break
+            except TimeoutError:
+                await stack.aclose()
+                continue
+
+        yield
 
 
 if __name__ == "__main__":
