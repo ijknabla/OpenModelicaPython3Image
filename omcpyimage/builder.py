@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
-from asyncio import create_subprocess_exec
+from asyncio import create_subprocess_exec, gather
 from asyncio.subprocess import PIPE
-from collections import defaultdict
+from collections import ChainMap, defaultdict
 from collections.abc import AsyncGenerator, Callable, Iterable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from pathlib import Path
@@ -61,30 +61,6 @@ async def push(image: str) -> None:
         assert await process.wait() == 0
 
 
-async def get_ubuntu_image(openmodelica_image: str) -> str:
-    async with terminating(
-        await create_subprocess_exec(
-            "docker",
-            "run",
-            openmodelica_image,
-            "cat",
-            "/etc/lsb-release",
-            stdout=PIPE,
-        )
-    ) as process:
-        stdout, _ = await process.communicate()
-
-        if (
-            matched := re.search(
-                r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8")
-            )
-        ) is not None:
-            release = matched.group(1)
-            return f"ubuntu:{release}"
-
-    raise ValueError(openmodelica_image)
-
-
 async def search_python_versions(
     shorts: Iterable[ShortVersion],
     source_uri: str = "https://www.python.org/downloads/source/",
@@ -113,3 +89,40 @@ async def _iter_python_version(
             if (matched := pattern.match(href)) is not None:
                 for group in matched.groups():
                     yield LongVersion.parse(group)
+
+
+async def categorize_by_ubuntu_release(
+    images: Iterable[str],
+) -> dict[str, list[str]]:
+    ubuntu_images = ChainMap[str, str](
+        *await gather(*map(_get_ubuntu_image, images))
+    )
+    result = defaultdict[str, list[str]](list)
+    for image, ubuntu in ubuntu_images.items():
+        result[ubuntu].append(image)
+
+    return dict(result)
+
+
+async def _get_ubuntu_image(image: str) -> dict[str, str]:
+    async with terminating(
+        await create_subprocess_exec(
+            "docker",
+            "run",
+            image,
+            "cat",
+            "/etc/lsb-release",
+            stdout=PIPE,
+        )
+    ) as process:
+        stdout, _ = await process.communicate()
+
+        if (
+            matched := re.search(
+                r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8")
+            )
+        ) is not None:
+            release = matched.group(1)
+            return {image: f"ubuntu:{release}"}
+
+    raise ValueError(image)

@@ -42,22 +42,28 @@ async def main(config_io: IO[str], limit: int) -> None:
 
     python_versions = await builder.search_python_versions(config.python)
 
-    build_images = {
-        image: await builder.get_ubuntu_image(image) for image in config.from_
-    }
+    categoeized_by_ubuntu = await builder.categorize_by_ubuntu_release(
+        config.from_
+    )
+
+    for ubuntu_image, openmodelica_images in categoeized_by_ubuntu.items():
+        print(f"{ubuntu_image}:")
+        for openmodelica_image in openmodelica_images:
+            print(f"\t- {openmodelica_image}")
 
     locks = defaultdict[str | LongVersion, Lock](Lock)
 
     tags = await gather(
         *(
             builder.build(
-                build_image,
+                ubuntu_image,
                 openmodelica_image,
-                version,
-                partial(lock_all, locks[build_image], locks[version]),
+                python_version,
+                partial(lock_all, locks[ubuntu_image], locks[python_version]),
             )
-            for openmodelica_image, build_image in build_images.items()
-            for version in python_versions
+            for ubuntu_image, categorized in categoeized_by_ubuntu.items()
+            for openmodelica_image in categorized
+            for python_version in python_versions
         )
     )
     await gather(*(builder.push(tag) for tag in tags))
