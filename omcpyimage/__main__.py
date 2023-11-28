@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import Lock, TimeoutError, gather, wait_for
-from collections import defaultdict
 from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import AsyncExitStack, asynccontextmanager
-from functools import partial, wraps
+from functools import wraps
+from itertools import islice
 from typing import IO, Any, ParamSpec, TypeVar
 
 import click
@@ -13,7 +13,6 @@ import toml
 
 from . import builder
 from .config import Config
-from .types import LongVersion
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -46,26 +45,40 @@ async def main(config_io: IO[str], limit: int) -> None:
         config.from_
     )
 
-    for ubuntu_image, openmodelica_images in categoeized_by_ubuntu.items():
-        print(f"{ubuntu_image}:")
-        for openmodelica_image in openmodelica_images:
-            print(f"\t- {openmodelica_image}")
+    first = [
+        (ubuntu_image, openmodelica_image, python_version)
+        for ubuntu_image, categorized in categoeized_by_ubuntu.items()
+        for openmodelica_image in islice(categorized, 1)
+        for python_version in islice(python_versions, 1)
+    ]
+    second = [
+        (ubuntu_image, openmodelica_image, python_version)
+        for ubuntu_image, categorized in categoeized_by_ubuntu.items()
+        for openmodelica_image in islice(categorized, 1)
+        for python_version in islice(python_versions, 1, None)
+    ]
+    third = [
+        (ubuntu_image, openmodelica_image, python_version)
+        for ubuntu_image, categorized in categoeized_by_ubuntu.items()
+        for openmodelica_image in islice(categorized, 1, None)
+        for python_version in python_versions
+    ]
 
-    locks = defaultdict[str | LongVersion, Lock](Lock)
+    # locks = defaultdict[str | LongVersion, Lock](Lock)
 
-    tags = await gather(
-        *(
-            builder.build(
-                ubuntu_image,
-                openmodelica_image,
-                python_version,
-                partial(lock_all, locks[ubuntu_image], locks[python_version]),
+    tags = list[str]()
+    for group in [first, second, third]:
+        tags += await gather(
+            *(
+                builder.build(
+                    ubuntu_image,
+                    openmodelica_image,
+                    python_version,
+                    # partial(lock_all, locks[ubuntu_image], locks[python_version]),  # noqa: E501
+                )
+                for ubuntu_image, openmodelica_image, python_version in group
             )
-            for ubuntu_image, categorized in categoeized_by_ubuntu.items()
-            for openmodelica_image in categorized
-            for python_version in python_versions
         )
-    )
     await gather(*(builder.push(tag) for tag in tags))
     for tag in sorted(tags):
         print(tag)
