@@ -102,3 +102,23 @@ async def search_python_version(
             if (matched := pattern.match(href)) is not None:
                 for group in matched.groups():
                     yield LongVersion.parse(group)
+
+
+async def iter_python_version(
+    source_uri: str = "https://www.python.org/downloads/source/",
+) -> AsyncGenerator[LongVersion, None]:
+    pattern = re.compile(
+        r"https?://www\.python\.org/ftp/python/\d+\.\d+\.\d+/"
+        r"Python\-(\d+\.\d+\.\d+).tgz",
+    )
+
+    async with AsyncExitStack() as stack:
+        session = await stack.enter_async_context(ClientSession())
+        response = await stack.enter_async_context(session.get(source_uri))
+
+        tree = lxml.html.fromstring(await response.text())
+
+        for href in tree.xpath("//a/@href"):
+            if (matched := pattern.match(href)) is not None:
+                for group in matched.groups():
+                    yield LongVersion.parse(group)
