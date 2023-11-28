@@ -1,37 +1,72 @@
-from asyncio import Semaphore
-from pathlib import Path
+from asyncio import Lock, TimeoutError, gather, wait_for
+from collections import defaultdict
+from collections.abc import AsyncGenerator
+from contextlib import AsyncExitStack, asynccontextmanager
+from functools import partial
+from typing import IO
 
 import click
 import toml
 
-from . import ImageBuilder, run_coroutine
-from ._api import is_config, sort_cache
+from . import builder, run_coroutine
+from .config import Config
+from .types import LongVersion
 
 
 @click.command
 @click.argument(
-    "config_path",
+    "config_io",
     metavar="CONFIG.TOML",
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, path_type=Path
-    ),
+    type=click.File(mode="r", encoding="utf-8"),
 )
-@click.option("--limit", type=int)
+@click.option("--limit", type=int, default=1)
 @run_coroutine
-async def main(config_path: Path, limit: int | None) -> None:
-    config = toml.loads(config_path.read_text(encoding="utf-8"))
-    assert is_config(config)
+async def main(config_io: IO[str], limit: int) -> None:
+    config = Config.model_validate(toml.load(config_io))
 
-    try:
-        if limit is not None:
-            lock = Semaphore(limit)
-        else:
-            lock = None
-        await ImageBuilder(config).build(lock)
-    finally:
-        assert is_config(config)
-        sort_cache(config)
-        config_path.write_text(toml.dumps(config), encoding="utf-8")
+    build_images = {
+        image: await builder.get_ubuntu_image(image) for image in config.from_
+    }
+    python_versions = [
+        max([lv async for lv in builder.search_python_version(sv)])
+        for sv in config.python
+    ]
+
+    locks = defaultdict[str | LongVersion, Lock](Lock)
+
+    tags = await gather(
+        *(
+            builder.build(
+                build_image,
+                openmodelica_image,
+                version,
+                partial(lock_all, locks[build_image], locks[version]),
+            )
+            for openmodelica_image, build_image in build_images.items()
+            for version in python_versions
+        )
+    )
+    await gather(*(builder.push(tag) for tag in tags))
+    for tag in sorted(tags):
+        print(tag)
+
+
+@asynccontextmanager
+async def lock_all(*locks: Lock) -> AsyncGenerator[None, None]:
+    async with AsyncExitStack() as stack:
+        while True:
+            lock_all = gather(
+                *(stack.enter_async_context(lock) for lock in locks)
+            )
+
+            try:
+                await wait_for(lock_all, 1e-3)
+                break
+            except TimeoutError:
+                await stack.aclose()
+                continue
+
+        yield
 
 
 if __name__ == "__main__":
