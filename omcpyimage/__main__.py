@@ -1,16 +1,32 @@
+from __future__ import annotations
+
+import asyncio
 from asyncio import Lock, TimeoutError, gather, wait_for
 from collections import defaultdict
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import AsyncExitStack, asynccontextmanager
-from functools import partial
-from typing import IO
+from functools import partial, wraps
+from typing import IO, Any, ParamSpec, TypeVar
 
 import click
 import toml
 
-from . import builder, run_coroutine
+from . import builder
 from .config import Config
 from .types import LongVersion
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def execute_coroutine(
+    f: Callable[P, Coroutine[Any, Any, T]]
+) -> Callable[P, T]:
+    @wraps(f)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        return asyncio.run(f(*args, **kwargs))
+
+    return wrapped
 
 
 @click.command
@@ -20,7 +36,7 @@ from .types import LongVersion
     type=click.File(mode="r", encoding="utf-8"),
 )
 @click.option("--limit", type=int, default=1)
-@run_coroutine
+@execute_coroutine
 async def main(config_io: IO[str], limit: int) -> None:
     config = Config.model_validate(toml.load(config_io))
 
