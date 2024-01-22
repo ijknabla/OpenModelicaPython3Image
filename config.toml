@@ -1,5 +1,6 @@
 
 from = [
+    "openmodelica/openmodelica:v1.22.1-minimal",
     "openmodelica/openmodelica:v1.22.0-minimal",
     "openmodelica/openmodelica:v1.21.0-minimal",
     "openmodelica/openmodelica:v1.20.0-minimal",
