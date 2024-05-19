@@ -22,6 +22,8 @@ pydantic = "^2.5.2"
 schema = "^0.7.5"
 toml = "^0.10.2"
 pyside6 = "^6.7.0"
+grpcio = "^1.63.0"
+protobuf = "^5.26.1"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.7"
@@ -29,6 +31,7 @@ types-setuptools = "^67.1.0.2"
 types-toml = "^0.10.8.2"
 pre-commit = "^3.7.1"
 ruff = "^0.4.4"
+grpcio-tools = "^1.63.0"
 
 [tool.poetry-version-plugin]
 source = "init"
