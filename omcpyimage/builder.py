@@ -15,7 +15,7 @@ from aiohttp import ClientSession
 from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
-from .util import aterminating, terminating
+from .util import aterminating, in_executor, terminating
 
 
 class OpenmodelicaPythonImage(NamedTuple):
@@ -108,23 +108,24 @@ async def categorize_by_ubuntu_release(
     return dict(result)
 
 
-async def _get_ubuntu_image(image: str) -> dict[str, str]:
-    async with aterminating(
-        await create_subprocess_exec(
-            "docker",
-            "run",
-            image,
-            "cat",
-            "/etc/lsb-release",
+@in_executor
+def _get_ubuntu_image(image: str) -> dict[str, str]:
+    with terminating(
+        Popen(
+            [
+                "docker",
+                "run",
+                image,
+                "cat",
+                "/etc/lsb-release",
+            ],
             stdout=PIPE,
         )
     ) as process:
-        stdout, _ = await process.communicate()
-
-        if (
-            matched := re.search(r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8"))
-        ) is not None:
-            release = matched.group(1)
-            return {image: f"ubuntu:{release}"}
+        if process.stdout is not None:
+            for line in process.stdout:
+                for matched in re.finditer(rb"DISTRIB_RELEASE=(\d+\.\d+)", line):
+                    release = matched.group(1).decode("utf-8")
+                    return {image: f"ubuntu:{release}"}
 
     raise ValueError(image)
