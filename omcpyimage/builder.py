@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from asyncio import create_subprocess_exec, gather
+from asyncio import Future, create_subprocess_exec, gather
 from asyncio.subprocess import PIPE
 from collections import ChainMap, defaultdict
 from collections.abc import AsyncGenerator, Iterable
@@ -32,6 +32,7 @@ class OpenmodelicaPythonImage(NamedTuple):
     def __str__(self) -> str:
         return f"{self.base}:{self.tag}"
 
+    @in_executor
     def __execute_docker(self, sub_cmd: Literal["push", "pull"], /) -> None:
         cmd = ["docker", sub_cmd, f"{self}"]
         with terminating(Popen(cmd)) as process:
@@ -40,10 +41,10 @@ class OpenmodelicaPythonImage(NamedTuple):
         if returncode := process.wait():
             raise CalledProcessError(returncode, cmd)
 
-    def pull(self) -> None:
+    def pull(self) -> Future[None]:
         return self.__execute_docker("pull")
 
-    def push(self) -> None:
+    def push(self) -> Future[None]:
         return self.__execute_docker("push")
 
     async def build(self) -> None:
