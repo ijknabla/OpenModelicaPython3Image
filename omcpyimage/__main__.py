@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from asyncio import Lock, TimeoutError, gather, wait_for
+from asyncio import Future, Lock, TimeoutError, gather, get_running_loop, wait_for
 from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import AsyncExitStack, asynccontextmanager
-from functools import wraps
+from functools import partial, wraps
 from operator import itemgetter
-from typing import IO, Any, ParamSpec, TypeVar
+from typing import IO, Any, ParamSpec, TypeVar, TypeVarTuple
 
 import click
 import toml
@@ -17,6 +17,7 @@ from .config import Config
 
 P = ParamSpec("P")
 T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
 
 
 def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
@@ -36,6 +37,9 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
 @click.option("--limit", type=int, default=1)
 @execute_coroutine
 async def main(config_io: IO[str], limit: int) -> None:
+    run_in_executor: Callable[[Callable[[*Ts], T], *Ts], Future[T]]
+    run_in_executor = partial(get_running_loop().run_in_executor, None)  # type: ignore[assignment]
+
     config = Config.model_validate(toml.load(config_io))
 
     pythons = await builder.search_python_versions(config.python)
@@ -67,7 +71,9 @@ async def main(config_io: IO[str], limit: int) -> None:
 
     assert (group0 | group1 | group2) == images
 
-    [image.pull() for image in images]
+    await gather(
+        *(run_in_executor(image.pull) for image in images), return_exceptions=True
+    )
     for group in [group0, group1, group2]:
         await gather(*(image.build() for image in sorted(group)))
     await gather(*(image.push() for image in images))
