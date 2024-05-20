@@ -76,7 +76,7 @@ async def main(config_io: IO[str], limit: int) -> None:
     )
     for group in [group0, group1, group2]:
         await gather(*(image.build() for image in sorted(group)))
-    await gather(*(image.push() for image in images))
+    await gather(*(run_in_executor(image.push) for image in images))
     for image in sorted(images):
         print(image)
 

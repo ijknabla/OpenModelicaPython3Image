@@ -35,13 +35,14 @@ class OpenmodelicaPythonImage(NamedTuple):
     def pull(self) -> None:
         cmd = ["docker", "pull", f"{self}"]
         process = Popen(cmd)
-        try:
-            returncode = process.wait()
-        finally:
-            if process.poll() is None:
-                process.terminate()
 
-        returncode = process.wait()
+        try:
+            returncode: int | None = process.wait()
+        except Exception:
+            if (returncode := process.poll()) is None:
+                process.terminate()
+                returncode = process.wait()
+
         if returncode:
             raise CalledProcessError(returncode, cmd)
 
@@ -65,10 +66,19 @@ class OpenmodelicaPythonImage(NamedTuple):
 
             assert await process.wait() == 0
 
-    async def push(self) -> None:
-        process = await create_subprocess_exec("docker", "push", f"{self}")
-        async with terminating(process):
-            assert await process.wait() == 0
+    def push(self) -> None:
+        cmd = ["docker", "push", f"{self}"]
+        process = Popen(cmd)
+
+        try:
+            returncode: int | None = process.wait()
+        except Exception:
+            if (returncode := process.poll()) is None:
+                process.terminate()
+                returncode = process.wait()
+
+        if returncode:
+            raise CalledProcessError(returncode, cmd)
 
 
 async def search_python_versions(
