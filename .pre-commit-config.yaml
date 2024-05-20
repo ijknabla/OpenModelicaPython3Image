@@ -10,32 +10,21 @@ repos:
     -   id: check-added-large-files
 -   repo: local
     hooks:
-    -   id: poetry-black
-        name: Format python code by black
-        entry: poetry
+    -   id: ruff-check
+        name: Check python code by ruff (https://docs.astral.sh/ruff/rules/)
+        entry: ruff
         args:
-        -   run
-        -   black
-        -   .
+        -   check
+        -   --fix
         language: system
-        pass_filenames: false
-    -   id: poetry-isort
-        name: Format python code by isort
-        entry: poetry
+        files: \.pyi?$
+    -   id: ruff-format
+        name: Format python code by ruff
+        entry: ruff
         args:
-        -   run
-        -   isort
-        -   .
+        -   format
         language: system
-        pass_filenames: false
-    -   id: poetry-pflake8
-        name: Check python code by pflake8
-        entry: poetry
-        args:
-        -   run
-        -   pflake8
-        language: system
-        pass_filenames: false
+        files: \.pyi?$
     -   id: poetry-mypy
         name: Check python code by mypy
         entry: poetry

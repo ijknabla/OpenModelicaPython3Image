@@ -95,9 +95,7 @@ async def _iter_python_version(
 async def categorize_by_ubuntu_release(
     images: Iterable[str],
 ) -> dict[str, list[str]]:
-    ubuntu_images = ChainMap[str, str](
-        *await gather(*map(_get_ubuntu_image, images))
-    )
+    ubuntu_images = ChainMap[str, str](*await gather(*map(_get_ubuntu_image, images)))
     result = defaultdict[str, list[str]](list)
     for image, ubuntu in ubuntu_images.items():
         result[ubuntu].append(image)
@@ -119,9 +117,7 @@ async def _get_ubuntu_image(image: str) -> dict[str, str]:
         stdout, _ = await process.communicate()
 
         if (
-            matched := re.search(
-                r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8")
-            )
+            matched := re.search(r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8"))
         ) is not None:
             release = matched.group(1)
             return {image: f"ubuntu:{release}"}
