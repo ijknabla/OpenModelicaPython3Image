@@ -4,14 +4,13 @@ import re
 from asyncio import Future, gather
 from asyncio.subprocess import PIPE
 from collections import ChainMap, defaultdict
-from collections.abc import AsyncGenerator, Iterable
-from contextlib import AsyncExitStack
+from collections.abc import Iterable
 from pathlib import Path
 from subprocess import CalledProcessError, Popen
 from typing import NamedTuple
 
 import lxml.html
-from aiohttp import ClientSession
+import requests
 from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
@@ -57,29 +56,29 @@ async def search_python_versions(
     source_uri: str = "https://www.python.org/downloads/source/",
 ) -> list[LongVersion]:
     longs = defaultdict[ShortVersion, list[LongVersion]](list)
-    async for long in _iter_python_version(source_uri):
+    for long in await _iter_python_version(source_uri):
         longs[long.as_short()].append(long)
     return [max(longs[short]) for short in sorted(longs.keys() & set(shorts))]
 
 
-async def _iter_python_version(
+@in_executor
+def _iter_python_version(
     source_uri: str = "https://www.python.org/downloads/source/",
-) -> AsyncGenerator[LongVersion, None]:
+) -> list[LongVersion]:
     pattern = re.compile(
         r"https?://www\.python\.org/ftp/python/\d+\.\d+\.\d+/"
         r"Python\-(\d+\.\d+\.\d+).tgz",
     )
 
-    async with AsyncExitStack() as stack:
-        session = await stack.enter_async_context(ClientSession())
-        response = await stack.enter_async_context(session.get(source_uri))
+    response = requests.get(source_uri)
+    tree = lxml.html.fromstring(response.text)
 
-        tree = lxml.html.fromstring(await response.text())
-
-        for href in tree.xpath("//a/@href"):
-            if (matched := pattern.match(href)) is not None:
-                for group in matched.groups():
-                    yield LongVersion.parse(group)
+    return [
+        LongVersion.parse(group)
+        for href in tree.xpath("//a/@href")
+        if (matched := pattern.match(href)) is not None
+        for group in matched.groups()
+    ]
 
 
 async def categorize_by_ubuntu_release(
