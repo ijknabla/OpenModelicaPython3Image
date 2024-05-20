@@ -15,7 +15,7 @@ from aiohttp import ClientSession
 from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
-from .util import terminating
+from .util import aterminating
 
 
 class OpenmodelicaPythonImage(NamedTuple):
@@ -57,7 +57,7 @@ class OpenmodelicaPythonImage(NamedTuple):
 
         async with AsyncExitStack() as stack:
             process = await stack.enter_async_context(
-                terminating(
+                aterminating(
                     await create_subprocess_exec(
                         "docker",
                         "build",
@@ -115,7 +115,7 @@ async def categorize_by_ubuntu_release(
 
 
 async def _get_ubuntu_image(image: str) -> dict[str, str]:
-    async with terminating(
+    async with aterminating(
         await create_subprocess_exec(
             "docker",
             "run",

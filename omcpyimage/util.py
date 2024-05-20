@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager, suppress
 
 
 @asynccontextmanager
-async def terminating(
+async def aterminating(
     process: Process,
 ) -> AsyncGenerator[Process, None]:
     try:
