@@ -1,12 +1,14 @@
 [tool.poetry]
 name = "openmodelicawithpythonimage"
-version = "0"  # https://github.com/tiangolo/poetry-version-plugin/tree/main#readme
+version = "0.0.1a0.dev0"
 description = ""
 authors = ["ijknabla <ijknabla@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [
     { include = "omcpyimage"},
+    { include = "subprocess_pb2.py"},
+    { include = "subprocess_pb2_grpc.py"},
 ]
 
 [tool.poetry.scripts]
@@ -35,8 +37,8 @@ grpcio-tools = "^1.63.0"
 types-protobuf = "^5.26.0.20240422"
 grpc-pyi-plugin = {git = "https://github.com/ijknabla/grpc-pyi-plugin", rev = "0.0.0a0.dev1"}
 
-[tool.poetry-version-plugin]
-source = "init"
+# [tool.poetry-version-plugin]
+# source = "init"
 
 [build-system]
 requires = ["poetry-core"]
