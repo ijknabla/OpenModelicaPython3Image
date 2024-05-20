@@ -7,7 +7,7 @@ from collections import ChainMap, defaultdict
 from collections.abc import AsyncGenerator, Iterable
 from contextlib import AsyncExitStack
 from pathlib import Path
-from subprocess import Popen
+from subprocess import CalledProcessError, Popen
 from typing import NamedTuple
 
 import lxml.html
@@ -33,12 +33,17 @@ class OpenmodelicaPythonImage(NamedTuple):
         return f"{self.base}:{self.tag}"
 
     def pull(self) -> None:
-        process = Popen(["docker", "pull", f"{self}"])
+        cmd = ["docker", "pull", f"{self}"]
+        process = Popen(cmd)
         try:
-            process.wait()
+            returncode = process.wait()
         finally:
             if process.poll() is None:
                 process.terminate()
+
+        returncode = process.wait()
+        if returncode:
+            raise CalledProcessError(returncode, cmd)
 
     async def build(self) -> None:
         dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
