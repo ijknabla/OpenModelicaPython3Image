@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 import re
-from asyncio import Future, create_subprocess_exec, gather
+from asyncio import Future, gather
 from asyncio.subprocess import PIPE
 from collections import ChainMap, defaultdict
 from collections.abc import AsyncGenerator, Iterable
 from contextlib import AsyncExitStack
 from pathlib import Path
 from subprocess import CalledProcessError, Popen
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 import lxml.html
 from aiohttp import ClientSession
 from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
-from .util import aterminating, in_executor, terminating
+from .util import in_executor, terminating
 
 
 class OpenmodelicaPythonImage(NamedTuple):
@@ -29,43 +29,27 @@ class OpenmodelicaPythonImage(NamedTuple):
         openmodelica = LongVersion.parse(self.openmodelica)
         return f"v{openmodelica}-python{self.python.as_short()}"
 
-    def __str__(self) -> str:
+    @property
+    def image(self) -> str:
         return f"{self.base}:{self.tag}"
 
-    @in_executor
-    def __docker(self, sub_cmd: Literal["push", "pull"], /) -> None:
-        cmd = ["docker", sub_cmd, f"{self}"]
-        with terminating(Popen(cmd)) as process:
-            process.wait()
-
-        if returncode := process.wait():
-            raise CalledProcessError(returncode, cmd)
-
     def pull(self) -> Future[None]:
-        return self.__docker("pull")
+        return _run("docker", "pull", self.image)
 
     def push(self) -> Future[None]:
-        return self.__docker("push")
+        return _run("docker", "push", self.image)
 
-    async def build(self) -> None:
+    def build(self) -> Future[None]:
         dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
-
-        async with AsyncExitStack() as stack:
-            process = await stack.enter_async_context(
-                aterminating(
-                    await create_subprocess_exec(
-                        "docker",
-                        "build",
-                        f"{dockerfile.parent}",
-                        f"--tag={self}",
-                        f"--build-arg=BUILD_IMAGE={self.ubuntu}",
-                        f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
-                        f"--build-arg=PYTHON_VERSION={self.python}",
-                    )
-                )
-            )
-
-            assert await process.wait() == 0
+        return _run(
+            "docker",
+            "build",
+            f"{dockerfile.parent}",
+            f"--tag={self.image}",
+            f"--build-arg=BUILD_IMAGE={self.ubuntu}",
+            f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
+            f"--build-arg=PYTHON_VERSION={self.python}",
+        )
 
 
 async def search_python_versions(
