@@ -130,3 +130,12 @@ def _get_ubuntu_image(image: str) -> dict[str, str]:
                     return {image: f"ubuntu:{release}"}
 
     raise ValueError(image)
+
+
+@in_executor
+def _run(*cmd: str) -> None:
+    with terminating(Popen(cmd)) as process:
+        process.wait()
+
+    if returncode := process.wait():
+        raise CalledProcessError(returncode, cmd)
