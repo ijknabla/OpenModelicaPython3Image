@@ -33,7 +33,7 @@ class OpenmodelicaPythonImage(NamedTuple):
         return f"{self.base}:{self.tag}"
 
     @in_executor
-    def __execute_docker(self, sub_cmd: Literal["push", "pull"], /) -> None:
+    def __docker(self, sub_cmd: Literal["push", "pull"], /) -> None:
         cmd = ["docker", sub_cmd, f"{self}"]
         with terminating(Popen(cmd)) as process:
             process.wait()
@@ -42,10 +42,10 @@ class OpenmodelicaPythonImage(NamedTuple):
             raise CalledProcessError(returncode, cmd)
 
     def pull(self) -> Future[None]:
-        return self.__execute_docker("pull")
+        return self.__docker("pull")
 
     def push(self) -> Future[None]:
-        return self.__execute_docker("push")
+        return self.__docker("push")
 
     async def build(self) -> None:
         dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
