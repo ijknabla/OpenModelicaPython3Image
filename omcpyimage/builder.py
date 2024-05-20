@@ -15,7 +15,7 @@ from aiohttp import ClientSession
 from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
-from .util import aterminating
+from .util import aterminating, terminating
 
 
 class OpenmodelicaPythonImage(NamedTuple):
@@ -34,16 +34,10 @@ class OpenmodelicaPythonImage(NamedTuple):
 
     def __execute_docker(self, sub_cmd: Literal["push", "pull"], /) -> None:
         cmd = ["docker", sub_cmd, f"{self}"]
-        process = Popen(cmd)
+        with terminating(Popen(cmd)) as process:
+            process.wait()
 
-        try:
-            returncode: int | None = process.wait()
-        except Exception:
-            if (returncode := process.poll()) is None:
-                process.terminate()
-                returncode = process.wait()
-
-        if returncode:
+        if returncode := process.wait():
             raise CalledProcessError(returncode, cmd)
 
     def pull(self) -> None:
