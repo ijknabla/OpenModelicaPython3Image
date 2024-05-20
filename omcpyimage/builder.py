@@ -8,7 +8,7 @@ from collections.abc import AsyncGenerator, Iterable
 from contextlib import AsyncExitStack
 from pathlib import Path
 from subprocess import CalledProcessError, Popen
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 import lxml.html
 from aiohttp import ClientSession
@@ -32,8 +32,8 @@ class OpenmodelicaPythonImage(NamedTuple):
     def __str__(self) -> str:
         return f"{self.base}:{self.tag}"
 
-    def pull(self) -> None:
-        cmd = ["docker", "pull", f"{self}"]
+    def __execute_docker(self, sub_cmd: Literal["push", "pull"], /) -> None:
+        cmd = ["docker", sub_cmd, f"{self}"]
         process = Popen(cmd)
 
         try:
@@ -45,6 +45,12 @@ class OpenmodelicaPythonImage(NamedTuple):
 
         if returncode:
             raise CalledProcessError(returncode, cmd)
+
+    def pull(self) -> None:
+        return self.__execute_docker("pull")
+
+    def push(self) -> None:
+        return self.__execute_docker("push")
 
     async def build(self) -> None:
         dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
@@ -65,20 +71,6 @@ class OpenmodelicaPythonImage(NamedTuple):
             )
 
             assert await process.wait() == 0
-
-    def push(self) -> None:
-        cmd = ["docker", "push", f"{self}"]
-        process = Popen(cmd)
-
-        try:
-            returncode: int | None = process.wait()
-        except Exception:
-            if (returncode := process.poll()) is None:
-                process.terminate()
-                returncode = process.wait()
-
-        if returncode:
-            raise CalledProcessError(returncode, cmd)
 
 
 async def search_python_versions(
