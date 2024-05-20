@@ -54,3 +54,9 @@ module = [
     "schema",
 ]
 ignore_missing_imports = true
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules/
+select = [
+    "F", "E", "W", "C90", "I"
+]
