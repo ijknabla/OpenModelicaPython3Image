@@ -67,7 +67,7 @@ async def main(config_io: IO[str], limit: int) -> None:
 
     assert (group0 | group1 | group2) == images
 
-    await gather(*(image.pull() for image in images))
+    [image.pull() for image in images]
     for group in [group0, group1, group2]:
         await gather(*(image.build() for image in sorted(group)))
     await gather(*(image.push() for image in images))
