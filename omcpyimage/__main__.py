@@ -19,9 +19,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def execute_coroutine(
-    f: Callable[P, Coroutine[Any, Any, T]]
-) -> Callable[P, T]:
+def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
     @wraps(f)
     def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         return asyncio.run(f(*args, **kwargs))
@@ -42,9 +40,7 @@ async def main(config_io: IO[str], limit: int) -> None:
 
     pythons = await builder.search_python_versions(config.python)
 
-    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(
-        config.from_
-    )
+    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(config.from_)
 
     images = {
         OpenmodelicaPythonImage(
@@ -62,8 +58,7 @@ async def main(config_io: IO[str], limit: int) -> None:
     ubuntu0 = {
         image
         for image in images
-        if image.openmodelica
-        in map(itemgetter(0), ubuntu_openmodelica.values())
+        if image.openmodelica in map(itemgetter(0), ubuntu_openmodelica.values())
     }
 
     group0 = images & ubuntu0 & python0
@@ -84,9 +79,7 @@ async def main(config_io: IO[str], limit: int) -> None:
 async def lock_all(*locks: Lock) -> AsyncGenerator[None, None]:
     async with AsyncExitStack() as stack:
         while True:
-            lock_all = gather(
-                *(stack.enter_async_context(lock) for lock in locks)
-            )
+            lock_all = gather(*(stack.enter_async_context(lock) for lock in locks))
 
             try:
                 await wait_for(lock_all, 1e-3)

@@ -23,12 +23,11 @@ schema = "^0.7.5"
 toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
-isort = "^5.12.0"
 mypy = "^1.7"
-pyproject-flake8 = "^6.0.0.post1"
 types-setuptools = "^67.1.0.2"
 types-toml = "^0.10.8.2"
+pre-commit = "^3.7.1"
+ruff = "^0.4.4"
 
 [tool.poetry-version-plugin]
 source = "init"
@@ -53,3 +52,9 @@ module = [
     "schema",
 ]
 ignore_missing_imports = true
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules/
+select = [
+    "F", "E", "W", "C90", "I"
+]
