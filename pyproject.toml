@@ -21,10 +21,10 @@ requests = "^2.32.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
-types-setuptools = "^67.1.0.2"
 pre-commit = "^3.7.1"
 ruff = "^0.4.4"
 types-requests = "^2.31.0.20240406"
+types-setuptools = "^67.1.0.2"
 
 [tool.poetry-version-plugin]
 source = "init"
