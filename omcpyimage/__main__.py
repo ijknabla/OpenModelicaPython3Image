@@ -9,7 +9,7 @@ from operator import itemgetter
 from typing import IO, Any, ParamSpec, TypeVar, TypeVarTuple
 
 import click
-import toml
+import tomllib
 
 from . import builder
 from .builder import OpenmodelicaPythonImage
@@ -32,12 +32,12 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
 @click.argument(
     "config_io",
     metavar="CONFIG.TOML",
-    type=click.File(mode="r", encoding="utf-8"),
+    type=click.File(mode="rb"),
 )
 @click.option("--limit", type=int, default=1)
 @execute_coroutine
-async def main(config_io: IO[str], limit: int) -> None:
-    config = Config.model_validate(toml.load(config_io))
+async def main(config_io: IO[bytes], limit: int) -> None:
+    config = Config.model_validate(tomllib.load(config_io))
 
     pythons = await builder.search_python_versions(config.python)
 
