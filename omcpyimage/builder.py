@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import re
-from asyncio import create_subprocess_exec, gather
+from asyncio import Future, gather
 from asyncio.subprocess import PIPE
 from collections import ChainMap, defaultdict
-from collections.abc import AsyncGenerator, Iterable
-from contextlib import AsyncExitStack
+from collections.abc import Iterable
 from pathlib import Path
+from subprocess import CalledProcessError, Popen
 from typing import NamedTuple
 
 import lxml.html
-from aiohttp import ClientSession
+import requests
 from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
-from .util import terminating
+from .util import in_executor, terminating
 
 
 class OpenmodelicaPythonImage(NamedTuple):
@@ -28,38 +28,27 @@ class OpenmodelicaPythonImage(NamedTuple):
         openmodelica = LongVersion.parse(self.openmodelica)
         return f"v{openmodelica}-python{self.python.as_short()}"
 
-    def __str__(self) -> str:
+    @property
+    def image(self) -> str:
         return f"{self.base}:{self.tag}"
 
-    async def pull(self) -> None:
-        process = await create_subprocess_exec("docker", "pull", f"{self}")
-        async with terminating(process):
-            await process.wait()
+    def pull(self) -> Future[None]:
+        return _run("docker", "pull", self.image)
 
-    async def build(self) -> None:
+    def push(self) -> Future[None]:
+        return _run("docker", "push", self.image)
+
+    def build(self) -> Future[None]:
         dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
-
-        async with AsyncExitStack() as stack:
-            process = await stack.enter_async_context(
-                terminating(
-                    await create_subprocess_exec(
-                        "docker",
-                        "build",
-                        f"{dockerfile.parent}",
-                        f"--tag={self}",
-                        f"--build-arg=BUILD_IMAGE={self.ubuntu}",
-                        f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
-                        f"--build-arg=PYTHON_VERSION={self.python}",
-                    )
-                )
-            )
-
-            assert await process.wait() == 0
-
-    async def push(self) -> None:
-        process = await create_subprocess_exec("docker", "push", f"{self}")
-        async with terminating(process):
-            assert await process.wait() == 0
+        return _run(
+            "docker",
+            "build",
+            f"{dockerfile.parent}",
+            f"--tag={self.image}",
+            f"--build-arg=BUILD_IMAGE={self.ubuntu}",
+            f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
+            f"--build-arg=PYTHON_VERSION={self.python}",
+        )
 
 
 async def search_python_versions(
@@ -67,29 +56,29 @@ async def search_python_versions(
     source_uri: str = "https://www.python.org/downloads/source/",
 ) -> list[LongVersion]:
     longs = defaultdict[ShortVersion, list[LongVersion]](list)
-    async for long in _iter_python_version(source_uri):
+    for long in await _iter_python_version(source_uri):
         longs[long.as_short()].append(long)
     return [max(longs[short]) for short in sorted(longs.keys() & set(shorts))]
 
 
-async def _iter_python_version(
+@in_executor
+def _iter_python_version(
     source_uri: str = "https://www.python.org/downloads/source/",
-) -> AsyncGenerator[LongVersion, None]:
+) -> list[LongVersion]:
     pattern = re.compile(
         r"https?://www\.python\.org/ftp/python/\d+\.\d+\.\d+/"
         r"Python\-(\d+\.\d+\.\d+).tgz",
     )
 
-    async with AsyncExitStack() as stack:
-        session = await stack.enter_async_context(ClientSession())
-        response = await stack.enter_async_context(session.get(source_uri))
+    response = requests.get(source_uri)
+    tree = lxml.html.fromstring(response.text)
 
-        tree = lxml.html.fromstring(await response.text())
-
-        for href in tree.xpath("//a/@href"):
-            if (matched := pattern.match(href)) is not None:
-                for group in matched.groups():
-                    yield LongVersion.parse(group)
+    return [
+        LongVersion.parse(group)
+        for href in tree.xpath("//a/@href")
+        if (matched := pattern.match(href)) is not None
+        for group in matched.groups()
+    ]
 
 
 async def categorize_by_ubuntu_release(
@@ -103,23 +92,33 @@ async def categorize_by_ubuntu_release(
     return dict(result)
 
 
-async def _get_ubuntu_image(image: str) -> dict[str, str]:
-    async with terminating(
-        await create_subprocess_exec(
-            "docker",
-            "run",
-            image,
-            "cat",
-            "/etc/lsb-release",
+@in_executor
+def _get_ubuntu_image(image: str) -> dict[str, str]:
+    with terminating(
+        Popen(
+            [
+                "docker",
+                "run",
+                image,
+                "cat",
+                "/etc/lsb-release",
+            ],
             stdout=PIPE,
         )
     ) as process:
-        stdout, _ = await process.communicate()
-
-        if (
-            matched := re.search(r"DISTRIB_RELEASE=(\d+\.\d+)", stdout.decode("utf-8"))
-        ) is not None:
-            release = matched.group(1)
-            return {image: f"ubuntu:{release}"}
+        if process.stdout is not None:
+            for line in process.stdout:
+                for matched in re.finditer(rb"DISTRIB_RELEASE=(\d+\.\d+)", line):
+                    release = matched.group(1).decode("utf-8")
+                    return {image: f"ubuntu:{release}"}
 
     raise ValueError(image)
+
+
+@in_executor
+def _run(*cmd: str) -> None:
+    with terminating(Popen(cmd)) as process:
+        process.wait()
+
+    if returncode := process.wait():
+        raise CalledProcessError(returncode, cmd)
