@@ -41,6 +41,8 @@ async def main(config_io: IO[bytes], limit: int) -> None:
 
     pythons = await builder.search_python_versions(config.python)
 
+    return
+
     ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(config.from_)
 
     images = {
