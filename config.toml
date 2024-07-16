@@ -28,7 +28,9 @@ from = [
     "openmodelica/openmodelica:v1.13.0-minimal",
 ]
 
-openmodelica = []
+openmodelica = [
+    "1.23.1",
+]
 
 python = [
     "3.8",
