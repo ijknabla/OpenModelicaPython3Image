@@ -190,11 +190,7 @@ class OpenModelicaStage(BaseModel):
         print_(f"FROM ubuntu:latest AS {self.stage}")
         print_("RUN " + " && ".join([" ".join(cmd) for cmd in self.build_dep]))
         print_(f"COPY {self.source} /root")
-
-        for cmd in self.build:
-            print_("RUN " + " ".join(cmd))
-
-        # print_("RUN " + " && ".join([" ".join(cmd) for cmd in self.build]))
+        print_("RUN " + " && ".join([" ".join(cmd) for cmd in self.build]))
 
     @property
     def build_dep(self) -> Sequence[Sequence[str]]:
