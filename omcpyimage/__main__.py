@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import shutil
 from asyncio import Lock, TimeoutError, gather, wait_for
-from collections.abc import AsyncGenerator, Callable, Coroutine
+from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable, Iterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
 from operator import itemgetter
@@ -12,10 +14,12 @@ from typing import IO, Any, ParamSpec, TypeVar, TypeVarTuple
 
 import click
 import tomllib
+from git import GitError, Repo
 
 from . import builder
 from .builder import OpenmodelicaPythonImage
 from .config import Config
+from .types import LongVersion
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -37,15 +41,28 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
     type=click.File(mode="rb"),
 )
 @click.option(
-    "--cache-dir", type=click.Path(file_okay=False, exists=True, path_type=Path)
+    "--cache-dir",
+    type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path),
 )
 @execute_coroutine
 async def main(config_io: IO[bytes], cache_dir: Path | None) -> None:
+    git_cmd_logger = logging.getLogger("git.cmd")
+    git_cmd_logger.setLevel(logging.DEBUG)
+    git_cmd_logger.addHandler(logging.StreamHandler())
+
     config = Config.model_validate(tomllib.load(config_io))
 
     async with AsyncExitStack() as stack:
         if cache_dir is None:
             cache_dir = Path(stack.enter_context(TemporaryDirectory()))
+
+        # openmodelica_source = dict(
+        #     download_openmodelica(
+        #         cache_dir,
+        #         "https://github.com/OpenModelica/OpenModelica.git",
+        #         config.openmodelica,
+        #     )
+        # )
 
     pythons = await builder.search_python_versions(config.python)
 
@@ -84,6 +101,35 @@ async def main(config_io: IO[bytes], cache_dir: Path | None) -> None:
     await gather(*(image.push() for image in images))
     for image in sorted(images):
         print(image)
+
+
+def download_openmodelica(
+    directory: Path, uri: str, versions: Iterable[LongVersion]
+) -> Iterator[tuple[LongVersion, Path]]:
+    repository_path = directory / "OpenModelica/repo"
+
+    try:
+        repository = Repo(repository_path)
+    except GitError:
+        repository = Repo.clone_from(uri, repository_path)
+
+    for version in versions:
+        repository.git.checkout(f"v{version}")
+        repository.git.clean("-fdx")
+        repository.git.submodule("update", "--init", "--recursive")
+
+        source = directory / f"OpenModelica/src/v{version}"
+
+        for relative in repository.git.ls_files("--recurse-submodule").splitlines(
+            keepends=False
+        ):
+            src = Path(repository.git_dir, "..", relative)
+            if src.is_file():
+                dst = source / relative
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(src, dst)
+
+        yield version, source
 
 
 @asynccontextmanager
