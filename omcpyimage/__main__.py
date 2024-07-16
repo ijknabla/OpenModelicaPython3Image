@@ -34,9 +34,8 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
     metavar="CONFIG.TOML",
     type=click.File(mode="rb"),
 )
-@click.option("--limit", type=int, default=1)
 @execute_coroutine
-async def main(config_io: IO[bytes], limit: int) -> None:
+async def main(config_io: IO[bytes]) -> None:
     config = Config.model_validate(tomllib.load(config_io))
 
     pythons = await builder.search_python_versions(config.python)
