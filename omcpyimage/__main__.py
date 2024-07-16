@@ -207,7 +207,7 @@ class OpenModelicaStage(BaseModel):
                 (
                     """\
 curl https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.tar.gz --output -\
- | tar zxvf - -C /opt\
+ | tar zxvf - -C /opt --strip-components 1\
 """,
                 ),
             )
@@ -244,7 +244,7 @@ echo "deb-src [arch=amd64 signed-by=/usr/share/keyrings/openmodelica-keyring.gpg
         gcc = "gcc"
         gxx = "g++"
         if self.version < self.v1_22:
-            cmake = "/opt/cmake-3.22.1-linux-x86_64/bin/cmake"
+            cmake = "/opt/bin/cmake"
             gcc = "gcc-12"
             gxx = "g++-12"
 
