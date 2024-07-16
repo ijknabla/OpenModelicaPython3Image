@@ -4,7 +4,14 @@ import asyncio
 import logging
 import shutil
 from asyncio import Lock, TimeoutError, gather, wait_for
-from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable, Iterator
+from collections.abc import (
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+    Sequence,
+)
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import partial, wraps
 from itertools import chain
@@ -12,11 +19,12 @@ from operator import itemgetter
 from pathlib import Path
 from subprocess import run
 from tempfile import TemporaryDirectory
-from typing import IO, Any, ParamSpec, TypeVar, TypeVarTuple
+from typing import IO, Any, ClassVar, ParamSpec, TypeVar, TypeVarTuple
 
 import click
 import tomllib
 from git import GitError, Repo
+from pydantic import BaseModel
 
 from . import builder
 from .builder import OpenmodelicaPythonImage
@@ -165,6 +173,56 @@ def write_openmodelica_stage(
 
     print_(f"FROM ubuntu:latest AS {stage}")
     print_(f"COPY {source} /root")
+
+    for command in OpenModelicaStage(version=version).build_dep:
+        print_("RUN " + " ".join(command))
+
+
+class OpenModelicaStage(BaseModel):
+    version: LongVersion
+    v1_22: ClassVar[LongVersion] = LongVersion(1, 22, 0)
+
+    @property
+    def build_dep(self) -> Sequence[Sequence[str]]:
+        gcc_alternatives: tuple[str, ...] = ()
+        cmake_install: tuple[tuple[str, ...], ...] = ()
+
+        if self.version < self.v1_22:
+            gcc_alternatives = ("gcc-12 g++-12",)
+            cmake_install = (
+                (
+                    """\
+curl https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.tar.gz --output -\
+ | tar zxvf - -C /opt\
+""",
+                ),
+            )
+
+        return (
+            ("apt update",),
+            (
+                """\
+apt install -y --no-install-recommends ca-certificates curl gnupg\
+""",
+                *gcc_alternatives,
+            ),
+            (
+                """\
+curl -fsSL http://build.openmodelica.org/apt/openmodelica.asc\
+ | gpg --dearmor -o /usr/share/keyrings/openmodelica-keyring.gpg\
+""",
+            ),
+            (
+                """\
+echo "deb-src [arch=amd64 signed-by=/usr/share/keyrings/openmodelica-keyring.gpg] https://build.openmodelica.org/apt\
+ $(cat /etc/os-release | grep "\\(UBUNTU\\|DEBIAN\\|VERSION\\)_CODENAME" | sort | cut -d= -f 2 | head -1) release"\
+ | tee /etc/apt/sources.list.d/openmodelica.list\
+""",  # noqa: E501
+            ),
+            ("apt update",),
+            ("apt build-dep -y openmodelica",),
+            *cmake_install,
+        )
 
 
 @asynccontextmanager
