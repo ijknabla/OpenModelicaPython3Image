@@ -162,6 +162,18 @@ def download_openmodelica(
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(src, dst)
 
+        for cmake_lists_txt in source.rglob("CMakeLists.txt"):
+            original = cmake_lists_txt.read_text(encoding="utf-8")
+
+            replaced = original.replace(
+                "https://build.openmodelica.org/omc/bootstrap/sources.tar.gz",
+                "https://build.openmodelica.org/old/bootstrap/sources.tar.gz",
+            )
+
+            if replaced != original:
+                print(f"Overwrite {cmake_lists_txt}")
+                cmake_lists_txt.write_text(replaced, encoding="utf-8")
+
         yield version, source
 
 
