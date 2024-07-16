@@ -251,7 +251,7 @@ echo "deb-src [arch=amd64 signed-by=/usr/share/keyrings/openmodelica-keyring.gpg
  -S=/root -B=/root/build\
 """,
             ),
-            ("make -C /root/build install",),
+            ("make -j4 -C /root/build install",),
         )
 
 
