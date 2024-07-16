@@ -15,7 +15,7 @@ from collections.abc import (
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import partial, wraps
 from itertools import chain
-from operator import itemgetter
+from operator import attrgetter, itemgetter
 from pathlib import Path
 from subprocess import run
 from tempfile import TemporaryDirectory
@@ -66,24 +66,23 @@ async def main(config_io: IO[bytes], cache_dir: Path | None) -> None:
         if cache_dir is None:
             cache_dir = Path(stack.enter_context(TemporaryDirectory()))
 
-        openmodelica_stage = {v: f"openmodelica-v{v}" for v in config.openmodelica}
-        openmodelica_source = dict(
-            download_openmodelica(
+        openmodelica_stage = {
+            version: OpenModelicaStage(
+                stage=f"openmodelica-v{version}",
+                version=version,
+                source=source.relative_to(cache_dir),
+            )
+            for version, source in download_openmodelica(
                 cache_dir,
                 "https://github.com/OpenModelica/OpenModelica.git",
                 config.openmodelica,
             )
-        )
+        }
 
         dockerfile = cache_dir / "Dockerfile"
         with dockerfile.open("w", encoding="utf-8") as f:
-            for v in config.openmodelica:
-                write_openmodelica_stage(
-                    f,
-                    openmodelica_stage[v],
-                    v,
-                    openmodelica_source[v].relative_to(cache_dir),
-                )
+            for stage in openmodelica_stage.values():
+                stage.write_dockerfile(f)
 
         run(
             [
@@ -91,7 +90,7 @@ async def main(config_io: IO[bytes], cache_dir: Path | None) -> None:
                 "build",
                 *chain.from_iterable(
                     ["--target", stage, "-t", f"test-{stage}"]
-                    for stage in openmodelica_stage.values()
+                    for stage in map(attrgetter("stage"), openmodelica_stage.values())
                 ),
                 f"{cache_dir}",
             ],
@@ -166,21 +165,18 @@ def download_openmodelica(
         yield version, source
 
 
-def write_openmodelica_stage(
-    dockerfile: IO[str], stage: str, version: LongVersion, source: Path
-) -> None:
-    print_ = partial(print, file=dockerfile, flush=False)
-
-    print_(f"FROM ubuntu:latest AS {stage}")
-    print_(f"COPY {source} /root")
-
-    for command in OpenModelicaStage(version=version).build_dep:
-        print_("RUN " + " ".join(command))
-
-
 class OpenModelicaStage(BaseModel):
+    stage: str
     version: LongVersion
+    source: Path
     v1_22: ClassVar[LongVersion] = LongVersion(1, 22, 0)
+
+    def write_dockerfile(self, dockerfile: IO[str]) -> None:
+        print_ = partial(print, file=dockerfile, flush=False)
+
+        print_(f"FROM ubuntu:latest AS {self.stage}")
+        print_("RUN " + " && ".join([" ".join(cmd) for cmd in self.build_dep]))
+        print_(f"COPY {self.source} /root")
 
     @property
     def build_dep(self) -> Sequence[Sequence[str]]:
