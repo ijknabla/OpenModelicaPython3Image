@@ -246,7 +246,8 @@ echo "deb-src [arch=amd64 signed-by=/usr/share/keyrings/openmodelica-keyring.gpg
         return (
             (
                 f"""\
-{cmake} -DOM_USE_CCACHE=OFF -DCMAKE_C_COMPILER={gcc} -DCMAKE_CXX_COMPILER={gxx}\
+{cmake} -DOM_ENABLE_GUI_CLIENTS=OFF -DOM_USE_CCACHE=OFF\
+ -DCMAKE_C_COMPILER={gcc} -DCMAKE_CXX_COMPILER={gxx}\
  -S=/root -B=/root/build\
 """,
             ),
