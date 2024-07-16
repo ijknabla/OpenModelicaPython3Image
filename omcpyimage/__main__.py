@@ -189,6 +189,7 @@ class OpenModelicaStage(BaseModel):
         print_(f"FROM ubuntu:latest AS {self.stage}")
         print_("RUN " + " && ".join([" ".join(cmd) for cmd in self.build_dep]))
         print_(f"COPY {self.source} /root")
+        print_("RUN " + " && ".join([" ".join(cmd) for cmd in self.build]))
 
     @property
     def build_dep(self) -> Sequence[Sequence[str]]:
@@ -230,6 +231,26 @@ echo "deb-src [arch=amd64 signed-by=/usr/share/keyrings/openmodelica-keyring.gpg
             ("apt update",),
             ("apt build-dep -y openmodelica",),
             *cmake_install,
+        )
+
+    @property
+    def build(self) -> Sequence[Sequence[str]]:
+        cmake = "cmake"
+        gcc = "gcc"
+        gxx = "g++"
+        if self.version < self.v1_22:
+            cmake = "/opt/cmake-3.22.1-linux-x86_64/bin/cmake"
+            gcc = "gcc-12"
+            gxx = "g++-12"
+
+        return (
+            (
+                f"""\
+{cmake} -DOM_USE_CCACHE=OFF -DCMAKE_C_COMPILER={gcc} -DCMAKE_CXX_COMPILER={gxx}\
+ -S=/root -B=/root/build\
+""",
+            ),
+            ("make -C /root/build install",),
         )
 
 
