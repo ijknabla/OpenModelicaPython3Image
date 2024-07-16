@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field, PlainSerializer, PlainValidator
+from pydantic import BaseModel, PlainSerializer, PlainValidator
 
 from .types import LongVersion, ShortVersion
 
@@ -44,5 +44,5 @@ AnnotatedShortVersion = Annotated[
 
 
 class Config(BaseModel):
-    from_: list[str] = Field(alias="from")
+    openmodelica: list[AnnotatedLongVersion]
     python: list[AnnotatedShortVersion]
