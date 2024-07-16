@@ -68,7 +68,7 @@ async def main(config_io: IO[bytes], cache_dir: Path | None) -> None:
 
         openmodelica_stage = {
             version: OpenModelicaStage(
-                stage=f"openmodelica-v{version}",
+                stage=f"openmodelica{version}",
                 version=version,
                 source=source.relative_to(cache_dir),
             )
