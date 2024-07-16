@@ -6,6 +6,8 @@ from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
 from operator import itemgetter
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import IO, Any, ParamSpec, TypeVar, TypeVarTuple
 
 import click
@@ -34,9 +36,16 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
     metavar="CONFIG.TOML",
     type=click.File(mode="rb"),
 )
+@click.option(
+    "--cache-dir", type=click.Path(file_okay=False, exists=True, path_type=Path)
+)
 @execute_coroutine
-async def main(config_io: IO[bytes]) -> None:
+async def main(config_io: IO[bytes], cache_dir: Path | None) -> None:
     config = Config.model_validate(tomllib.load(config_io))
+
+    async with AsyncExitStack() as stack:
+        if cache_dir is None:
+            cache_dir = Path(stack.enter_context(TemporaryDirectory()))
 
     pythons = await builder.search_python_versions(config.python)
 
