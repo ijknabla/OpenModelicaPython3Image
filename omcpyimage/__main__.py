@@ -147,6 +147,7 @@ def download_openmodelica(
         repository = Repo.clone_from(uri, repository_path)
 
     for version in versions:
+        shutil.rmtree(repository_path / "libraries", ignore_errors=True)
         repository.git.checkout(f"v{version}")
         repository.git.clean("-fdx")
         repository.git.submodule("update", "--init", "--recursive")
