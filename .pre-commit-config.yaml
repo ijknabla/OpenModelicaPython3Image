@@ -35,3 +35,12 @@ repos:
         -   .
         language: system
         pass_filenames: false
+    -   id: uic
+        name: Generate python code by pyside6-uic
+        language: system
+        entry: python
+        args:
+        -   .pre-commit/uic.py
+        -   --src=src
+        -   --dst=omcpyimage
+        files: src/ui/.*\.ui
