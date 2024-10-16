@@ -81,10 +81,13 @@ async def main(config_io: IO[bytes], limit: int) -> None:
         builder = Builder(
             executor=executor, group0=group0, group1=group1, group2=group2
         )
-        builder.output.connect(lambda x, y: print(x[1].tag, y.decode("utf-8").rstrip()))
 
         mainWindow = MainWindow()
         mainWindow.setImages(images)
+
+        builder.process_start.connect(mainWindow.update_process_status)
+        builder.process_returncode.connect(mainWindow.update_process_status)
+
         mainWindow.show()
 
         mainWindow.ui.startButton.pressed.connect(builder.start)

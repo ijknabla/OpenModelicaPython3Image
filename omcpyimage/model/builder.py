@@ -9,12 +9,15 @@ from ..builder import OpenmodelicaPythonImage
 from . import run_in_executor
 
 
+class Stage(Enum):
+    pull = auto()
+
+
 class Builder(QObject):
     start = Signal()
-    output = Signal(tuple, bytes)
-
-    class Stage(Enum):
-        pull = auto()
+    process_start = Signal(OpenmodelicaPythonImage, Stage)
+    process_output = Signal(OpenmodelicaPythonImage, Stage, bytes)
+    process_returncode = Signal(OpenmodelicaPythonImage, Stage, int)
 
     def __init__(
         self,
@@ -44,7 +47,9 @@ class Builder(QObject):
 
     async def _pull(self, image: OpenmodelicaPythonImage) -> None:
         process = await create_subprocess_exec(*image.pull, stdout=PIPE)
+        self.process_start.emit(image, Stage.pull)
         if process.stdout is None:
             raise RuntimeError
         async for line in process.stdout:
-            self.output.emit((Builder.Stage.pull, image), line)
+            self.process_output.emit(image, Stage.pull, line)
+        self.process_returncode.emit(image, Stage.pull, process.returncode)

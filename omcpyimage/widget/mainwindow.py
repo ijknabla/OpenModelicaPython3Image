@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
 from ..builder import OpenmodelicaPythonImage
+from ..model.builder import Stage
 from ..types import LongVersion
 from ..ui.mainwindow import Ui_MainWindow
 
@@ -45,3 +46,14 @@ class MainWindow(QMainWindow):
     def _treeWidgetItemClicked(self, item: QTreeWidgetItem, col: int) -> None:
         if item in self.treeWidgetItems.values():
             print(self.treeWidgetItems.inv[item])
+
+    def update_process_status(
+        self,
+        image: OpenmodelicaPythonImage,
+        stage: Stage,
+        returncode: int | None = None,
+    ) -> None:
+        text = f"{returncode}" if returncode is not None else "running..."
+
+        if stage is Stage.pull:
+            self.treeWidgetItems[image].setText(2, text)
