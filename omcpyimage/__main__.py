@@ -84,6 +84,7 @@ async def main(config_io: IO[bytes], limit: int) -> None:
         builder.output.connect(lambda x, y: print(x[1].tag, y.decode("utf-8").rstrip()))
 
         mainWindow = MainWindow()
+        mainWindow.setImages(images)
         mainWindow.show()
 
         mainWindow.ui.startButton.pressed.connect(builder.start)
