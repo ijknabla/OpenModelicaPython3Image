@@ -13,11 +13,12 @@ packages = [
 omcpyimage = "omcpyimage.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.13"
 click = "^8.1.3"
 lxml = "^4.9.2"
 pydantic = "^2.5.2"
 requests = "^2.32.0"
+pyside6 = "^6.8.0.1"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
