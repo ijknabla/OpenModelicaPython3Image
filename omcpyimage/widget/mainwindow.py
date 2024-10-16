@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Iterable
 
+from bidict import bidict
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
@@ -20,6 +21,8 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)  # type: ignore [no-untyped-call]
 
+        self.treeWidgetItems = bidict[OpenmodelicaPythonImage, QTreeWidgetItem]()
+
         self.ui.treeWidget.itemClicked.connect(print)
 
     def setImages(self, images: Iterable[OpenmodelicaPythonImage]) -> None:
@@ -36,3 +39,5 @@ class MainWindow(QMainWindow):
                 item1 = QTreeWidgetItem(item0)
                 item1.setText(0, f"{k}")
                 item1.setText(1, f"{v.python}")
+
+                self.treeWidgetItems[v] = item1
