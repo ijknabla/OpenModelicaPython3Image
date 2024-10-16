@@ -16,13 +16,6 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QPushButton" name="startButton">
-      <property name="text">
-       <string>start</string>
-      </property>
-     </widget>
-    </item>
-    <item>
      <widget class="QTreeWidget" name="treeWidget">
       <column>
        <property name="text">
@@ -34,6 +27,28 @@
         <string>python</string>
        </property>
       </column>
+      <column>
+       <property name="text">
+        <string>pull</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>build</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>push</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="startButton">
+      <property name="text">
+       <string>start</string>
+      </property>
      </widget>
     </item>
    </layout>

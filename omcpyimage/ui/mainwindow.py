@@ -28,15 +28,15 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.startButton = QPushButton(self.centralwidget)
-        self.startButton.setObjectName(u"startButton")
-
-        self.verticalLayout.addWidget(self.startButton)
-
         self.treeWidget = QTreeWidget(self.centralwidget)
         self.treeWidget.setObjectName(u"treeWidget")
 
         self.verticalLayout.addWidget(self.treeWidget)
+
+        self.startButton = QPushButton(self.centralwidget)
+        self.startButton.setObjectName(u"startButton")
+
+        self.verticalLayout.addWidget(self.startButton)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
@@ -54,9 +54,12 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-        self.startButton.setText(QCoreApplication.translate("MainWindow", u"start", None))
         ___qtreewidgetitem = self.treeWidget.headerItem()
+        ___qtreewidgetitem.setText(4, QCoreApplication.translate("MainWindow", u"push", None));
+        ___qtreewidgetitem.setText(3, QCoreApplication.translate("MainWindow", u"build", None));
+        ___qtreewidgetitem.setText(2, QCoreApplication.translate("MainWindow", u"pull", None));
         ___qtreewidgetitem.setText(1, QCoreApplication.translate("MainWindow", u"python", None));
         ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindow", u"openmodelica", None));
+        self.startButton.setText(QCoreApplication.translate("MainWindow", u"start", None))
     # retranslateUi
 
