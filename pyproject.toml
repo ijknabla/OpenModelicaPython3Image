@@ -51,6 +51,18 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = [
+    "omcpyimage.ui.*"
+]
+disable_error_code = [
+    "no-untyped-call",
+    "no-untyped-def",
+]
+
+[tool.ruff]
+extend-exclude = ["omcpyimage/ui/*.py"]
+
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/
 select = [
