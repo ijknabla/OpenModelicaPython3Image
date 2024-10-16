@@ -25,9 +25,14 @@
     <item>
      <widget class="QTreeWidget" name="treeWidget">
       <column>
-       <!-- <property name="text">
-        <string notr="true">1</string>
-       </property> -->
+       <property name="text">
+        <string>openmodelica</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>python</string>
+       </property>
       </column>
      </widget>
     </item>

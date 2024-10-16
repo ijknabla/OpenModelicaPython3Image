@@ -55,5 +55,8 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.startButton.setText(QCoreApplication.translate("MainWindow", u"start", None))
+        ___qtreewidgetitem = self.treeWidget.headerItem()
+        ___qtreewidgetitem.setText(1, QCoreApplication.translate("MainWindow", u"python", None));
+        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindow", u"openmodelica", None));
     # retranslateUi
 
