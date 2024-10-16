@@ -15,8 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QMainWindow, QMenuBar, QPushButton,
-    QSizePolicy, QStatusBar, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QHeaderView, QMainWindow, QMenuBar,
+    QPushButton, QSizePolicy, QStatusBar, QTreeWidget,
+    QTreeWidgetItem, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -31,6 +32,11 @@ class Ui_MainWindow(object):
         self.startButton.setObjectName(u"startButton")
 
         self.verticalLayout.addWidget(self.startButton)
+
+        self.treeWidget = QTreeWidget(self.centralwidget)
+        self.treeWidget.setObjectName(u"treeWidget")
+
+        self.verticalLayout.addWidget(self.treeWidget)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
