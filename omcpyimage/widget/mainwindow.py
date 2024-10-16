@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
 
         self.treeWidgetItems = bidict[OpenmodelicaPythonImage, QTreeWidgetItem]()
 
-        self.ui.treeWidget.itemClicked.connect(print)
+        self.ui.treeWidget.itemClicked.connect(self._treeWidgetItemClicked)
 
     def setImages(self, images: Iterable[OpenmodelicaPythonImage]) -> None:
         categories = defaultdict[LongVersion, list[OpenmodelicaPythonImage]](lambda: [])
@@ -41,3 +41,7 @@ class MainWindow(QMainWindow):
                 item1.setText(1, f"{v.python}")
 
                 self.treeWidgetItems[v] = item1
+
+    def _treeWidgetItemClicked(self, item: QTreeWidgetItem, col: int) -> None:
+        if item in self.treeWidgetItems.values():
+            print(self.treeWidgetItems.inv[item])
