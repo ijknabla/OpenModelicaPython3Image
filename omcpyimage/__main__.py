@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from asyncio import Lock, TimeoutError, gather, wait_for
 from collections.abc import AsyncGenerator, Callable, Coroutine
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
 from operator import itemgetter
@@ -12,9 +13,13 @@ import click
 import tomllib
 from PySide6.QtWidgets import QApplication
 
-from . import builder
-from .builder import OpenmodelicaPythonImage
+from .builder import (
+    OpenmodelicaPythonImage,
+    categorize_by_ubuntu_release,
+    search_python_versions,
+)
 from .config import Config
+from .model.builder import Builder
 from .widget.mainwindow import MainWindow
 
 P = ParamSpec("P")
@@ -41,9 +46,9 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
 async def main(config_io: IO[bytes], limit: int) -> None:
     config = Config.model_validate(tomllib.load(config_io))
 
-    pythons = await builder.search_python_versions(config.python)
+    pythons = await search_python_versions(config.python)
 
-    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(config.from_)
+    ubuntu_openmodelica = await categorize_by_ubuntu_release(config.from_)
 
     images = {
         OpenmodelicaPythonImage(
@@ -70,12 +75,20 @@ async def main(config_io: IO[bytes], limit: int) -> None:
 
     assert (group0 | group1 | group2) == images
 
-    app = QApplication()
+    with ThreadPoolExecutor() as executor:
+        app = QApplication()
 
-    mainWindow = MainWindow()
-    mainWindow.show()
+        builder = Builder(
+            executor=executor, group0=group0, group1=group1, group2=group2
+        )
+        builder.output.connect(lambda x, y: print(x[1].tag, y.decode("utf-8").rstrip()))
 
-    exit(app.exec())
+        mainWindow = MainWindow()
+        mainWindow.show()
+
+        mainWindow.ui.startButton.pressed.connect(builder.start)
+
+        exit(app.exec())
 
     # await gather(*(image.pull() for image in images), return_exceptions=True)
     # for group in [group0, group1, group2]:

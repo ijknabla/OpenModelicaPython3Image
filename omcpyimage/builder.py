@@ -32,8 +32,9 @@ class OpenmodelicaPythonImage(NamedTuple):
     def image(self) -> str:
         return f"{self.base}:{self.tag}"
 
-    def pull(self) -> Future[None]:
-        return _run("docker", "pull", self.image)
+    @property
+    def pull(self) -> tuple[str, ...]:
+        return "docker", "pull", self.image
 
     def push(self) -> Future[None]:
         return _run("docker", "push", self.image)
