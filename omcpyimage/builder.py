@@ -24,6 +24,10 @@ class OpenmodelicaPythonImage(NamedTuple):
     python: LongVersion
 
     @property
+    def openmodelica_version(self) -> LongVersion:
+        return LongVersion.parse(self.openmodelica)
+
+    @property
     def tag(self) -> str:
         openmodelica = LongVersion.parse(self.openmodelica)
         return f"v{openmodelica}-python{self.python.as_short()}"
