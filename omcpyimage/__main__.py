@@ -90,6 +90,7 @@ async def main(config_io: IO[bytes], limit: int) -> None:
 
         mainWindow.show()
 
+        builder.start.emit()
         mainWindow.ui.startButton.pressed.connect(builder.start)
 
         exit(app.exec())
