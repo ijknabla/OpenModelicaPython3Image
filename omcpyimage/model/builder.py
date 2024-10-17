@@ -2,6 +2,7 @@ from asyncio import gather
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from concurrent.futures import Executor
 from enum import Enum, auto
+from itertools import chain
 from typing import NamedTuple
 
 from PySide6.QtCore import QObject, Signal
@@ -33,9 +34,9 @@ class OpenmodelicaPythonImage(NamedTuple):
     def image(self) -> str:
         return f"{self.base}:{self.tag}"
 
-    @property
-    def pull(self) -> tuple[str, ...]:
-        return "docker", "pull", self.image
+    def command(self, stage: Stage) -> tuple[str, ...]:
+        if stage is Stage.pull:
+            return "docker", "pull", self.image
 
     # def push(self) -> Future[None]:
     #     return _run("docker", "push", self.image)
@@ -78,18 +79,23 @@ class Builder(QObject):
         self.start.connect(self._run)
 
     @property
-    def all_group(self) -> set[OpenmodelicaPythonImage]:
-        return self.group0 | self.group1 | self.group2
+    def groups(self) -> tuple[set[OpenmodelicaPythonImage], ...]:
+        return self.group0, self.group1, self.group2
 
     @run_in_executor
     async def _run(self) -> None:
-        await gather(*map(self._pull, self.all_group))
+        await gather(
+            *(
+                self._execute(image, Stage.pull)
+                for image in chain.from_iterable(self.groups)
+            )
+        )
 
-    async def _pull(self, image: OpenmodelicaPythonImage) -> None:
-        process = await create_subprocess_exec(*image.pull, stdout=PIPE)
-        self.process_start.emit(image, Stage.pull)
+    async def _execute(self, image: OpenmodelicaPythonImage, stage: Stage) -> None:
+        process = await create_subprocess_exec(*image.command(stage), stdout=PIPE)
+        self.process_start.emit(image, stage)
         if process.stdout is None:
             raise RuntimeError
         async for line in process.stdout:
-            self.process_output.emit(image, Stage.pull, line)
-        self.process_returncode.emit(image, Stage.pull, process.returncode)
+            self.process_output.emit(image, stage, line)
+        self.process_returncode.emit(image, stage, process.returncode)
