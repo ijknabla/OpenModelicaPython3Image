@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         stage: Stage,
         returncode: int | None = None,
     ) -> None:
-        column = {Stage.pull: 2, Stage.build: 3}[stage]
+        column = {Stage.pull: 2, Stage.build: 3, Stage.push: 4}[stage]
         text = f"{returncode}" if returncode is not None else "running..."
 
         self.treeWidgetItems[image].setText(column, text)
