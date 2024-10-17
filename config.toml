@@ -11,21 +11,21 @@ from = [
     "openmodelica/openmodelica:v1.20.0-minimal",
     # v1.19
     "openmodelica/openmodelica:v1.19.2-minimal",
-    # v1.18
-    "openmodelica/openmodelica:v1.18.0-minimal",
-    # v1.17
-    "openmodelica/openmodelica:v1.17.0-minimal",
-    # v1.16
-    "openmodelica/openmodelica:v1.16.2-minimal",
-    "openmodelica/openmodelica:v1.16.1-minimal",
-    "openmodelica/openmodelica:v1.16.0-minimal",
-    # v1.15
-    # v1.14
-    "openmodelica/openmodelica:v1.14.2-minimal",
-    "openmodelica/openmodelica:v1.14.1-minimal",
-    # v1.13
-    "openmodelica/openmodelica:v1.13.2-minimal",
-    "openmodelica/openmodelica:v1.13.0-minimal",
+    # # v1.18
+    # "openmodelica/openmodelica:v1.18.0-minimal",
+    # # v1.17
+    # "openmodelica/openmodelica:v1.17.0-minimal",
+    # # v1.16
+    # "openmodelica/openmodelica:v1.16.2-minimal",
+    # "openmodelica/openmodelica:v1.16.1-minimal",
+    # "openmodelica/openmodelica:v1.16.0-minimal",
+    # # v1.15
+    # # v1.14
+    # "openmodelica/openmodelica:v1.14.2-minimal",
+    # "openmodelica/openmodelica:v1.14.1-minimal",
+    # # v1.13
+    # "openmodelica/openmodelica:v1.13.2-minimal",
+    # "openmodelica/openmodelica:v1.13.0-minimal",
 ]
 
 python = [
