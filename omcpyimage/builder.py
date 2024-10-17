@@ -1,59 +1,17 @@
 from __future__ import annotations
 
 import re
-from asyncio import Future, gather
+from asyncio import gather
 from asyncio.subprocess import PIPE
 from collections import ChainMap, defaultdict
 from collections.abc import Iterable
-from pathlib import Path
 from subprocess import CalledProcessError, Popen
-from typing import NamedTuple
 
 import lxml.html
 import requests
-from pkg_resources import resource_filename
 
 from .types import LongVersion, ShortVersion
 from .util import in_executor, terminating
-
-
-class OpenmodelicaPythonImage(NamedTuple):
-    base: str
-    ubuntu: str
-    openmodelica: str
-    python: LongVersion
-
-    @property
-    def openmodelica_version(self) -> LongVersion:
-        return LongVersion.parse(self.openmodelica)
-
-    @property
-    def tag(self) -> str:
-        openmodelica = LongVersion.parse(self.openmodelica)
-        return f"v{openmodelica}-python{self.python.as_short()}"
-
-    @property
-    def image(self) -> str:
-        return f"{self.base}:{self.tag}"
-
-    @property
-    def pull(self) -> tuple[str, ...]:
-        return "docker", "pull", self.image
-
-    def push(self) -> Future[None]:
-        return _run("docker", "push", self.image)
-
-    def build(self) -> Future[None]:
-        dockerfile = Path(resource_filename(__name__, "Dockerfile")).resolve()
-        return _run(
-            "docker",
-            "build",
-            f"{dockerfile.parent}",
-            f"--tag={self.image}",
-            f"--build-arg=BUILD_IMAGE={self.ubuntu}",
-            f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
-            f"--build-arg=PYTHON_VERSION={self.python}",
-        )
 
 
 async def search_python_versions(
