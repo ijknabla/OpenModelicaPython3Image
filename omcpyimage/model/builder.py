@@ -3,6 +3,7 @@ from asyncio.subprocess import PIPE, create_subprocess_exec
 from collections.abc import Sequence
 from concurrent.futures import Executor
 from enum import Enum, auto
+from importlib.resources import as_file, files
 from itertools import chain
 from typing import NamedTuple
 
@@ -14,6 +15,7 @@ from . import run_in_executor
 
 class Stage(Enum):
     pull = auto()
+    build = auto()
 
 
 class OpenmodelicaPythonImage(NamedTuple):
@@ -38,6 +40,17 @@ class OpenmodelicaPythonImage(NamedTuple):
     def command(self, stage: Stage) -> tuple[str, ...]:
         if stage is Stage.pull:
             return "docker", "pull", self.image
+        elif stage is Stage.build:
+            with as_file(files(__name__).joinpath("Dockerfile")) as dockerfile:
+                return (
+                    "docker",
+                    "build",
+                    f"{dockerfile.parent}",
+                    f"--tag={self.image}",
+                    f"--build-arg=BUILD_IMAGE={self.ubuntu}",
+                    f"--build-arg=OPENMODELICA_IMAGE={self.openmodelica}",
+                    f"--build-arg=PYTHON_VERSION={self.python}",
+                )
 
     # def push(self) -> Future[None]:
     #     return _run("docker", "push", self.image)
@@ -83,6 +96,8 @@ class Builder(QObject):
                 for image in chain.from_iterable(self.groups)
             )
         )
+        for group in self.groups:
+            await gather(*(self._execute(image, Stage.build) for image in group))
 
     async def _execute(self, image: OpenmodelicaPythonImage, stage: Stage) -> None:
         process = await create_subprocess_exec(*image.command(stage), stdout=PIPE)
