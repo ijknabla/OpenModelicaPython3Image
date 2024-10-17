@@ -14,12 +14,11 @@ import tomllib
 from PySide6.QtWidgets import QApplication
 
 from .builder import (
-    OpenmodelicaPythonImage,
     categorize_by_ubuntu_release,
     search_python_versions,
 )
 from .config import Config
-from .model.builder import Builder
+from .model.builder import Builder, OpenmodelicaPythonImage
 from .widget.mainwindow import MainWindow
 
 P = ParamSpec("P")

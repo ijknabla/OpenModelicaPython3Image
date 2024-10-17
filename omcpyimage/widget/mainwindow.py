@@ -5,9 +5,8 @@ from bidict import bidict
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
-from ..builder import OpenmodelicaPythonImage
 from ..config import Config
-from ..model.builder import Stage
+from ..model.builder import OpenmodelicaPythonImage, Stage
 from ..types import LongVersion
 from ..ui.mainwindow import Ui_MainWindow
 
