@@ -19,13 +19,13 @@ from = [
     "openmodelica/openmodelica:v1.16.2-minimal",
     "openmodelica/openmodelica:v1.16.1-minimal",
     "openmodelica/openmodelica:v1.16.0-minimal",
-    # v1.15
-    # v1.14
-    "openmodelica/openmodelica:v1.14.2-minimal",
-    "openmodelica/openmodelica:v1.14.1-minimal",
-    # v1.13
-    "openmodelica/openmodelica:v1.13.2-minimal",
-    "openmodelica/openmodelica:v1.13.0-minimal",
+    # # v1.15
+    # # v1.14
+    # "openmodelica/openmodelica:v1.14.2-minimal",
+    # "openmodelica/openmodelica:v1.14.1-minimal",
+    # # v1.13
+    # "openmodelica/openmodelica:v1.13.2-minimal",
+    # "openmodelica/openmodelica:v1.13.0-minimal",
 ]
 
 python = [
