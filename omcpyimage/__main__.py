@@ -85,13 +85,15 @@ async def main(config_io: IO[bytes], limit: int) -> None:
         mainWindow = MainWindow(config=config)
         mainWindow.setImages(images)
 
+        # Connect model & view
         builder.process_start.connect(mainWindow.update_process_status)
         builder.process_returncode.connect(mainWindow.update_process_status)
+
+        mainWindow.ui.startButton.pressed.connect(builder.start)
 
         mainWindow.show()
 
         builder.start.emit()
-        mainWindow.ui.startButton.pressed.connect(builder.start)
 
         exit(app.exec())
 
