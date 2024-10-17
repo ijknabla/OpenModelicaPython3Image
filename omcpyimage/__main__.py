@@ -78,7 +78,8 @@ async def main(config_io: IO[bytes], limit: int) -> None:
         app = QApplication()
 
         builder = Builder(
-            executor=executor, group0=group0, group1=group1, group2=group2
+            executor=executor,
+            groups=(group0, group1, group2),
         )
 
         mainWindow = MainWindow(config=config)

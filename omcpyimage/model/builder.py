@@ -1,5 +1,6 @@
 from asyncio import gather
 from asyncio.subprocess import PIPE, create_subprocess_exec
+from collections.abc import Sequence
 from concurrent.futures import Executor
 from enum import Enum, auto
 from itertools import chain
@@ -65,22 +66,14 @@ class Builder(QObject):
         parent: QObject | None = None,
         *,
         executor: Executor,
-        group0: set[OpenmodelicaPythonImage],
-        group1: set[OpenmodelicaPythonImage],
-        group2: set[OpenmodelicaPythonImage],
+        groups: Sequence[set[OpenmodelicaPythonImage]],
     ):
         super().__init__(parent)
 
         self.executor = executor
-        self.group0 = group0
-        self.group1 = group1
-        self.group2 = group2
+        self.groups = groups
 
         self.start.connect(self._run)
-
-    @property
-    def groups(self) -> tuple[set[OpenmodelicaPythonImage], ...]:
-        return self.group0, self.group1, self.group2
 
     @run_in_executor
     async def _run(self) -> None:
