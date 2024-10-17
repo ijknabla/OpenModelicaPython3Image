@@ -5,6 +5,7 @@ from concurrent.futures import Executor
 from enum import Enum, auto
 from importlib.resources import as_file, files
 from itertools import chain
+from subprocess import CalledProcessError
 from typing import NamedTuple
 
 from PySide6.QtCore import QObject, Signal
@@ -94,16 +95,20 @@ class Builder(QObject):
             *(
                 self._execute(image, Stage.pull)
                 for image in chain.from_iterable(self.groups)
-            )
+            ),
+            return_exceptions=True,
         )
         for group in self.groups:
             await gather(*(self._execute(image, Stage.build) for image in group))
 
     async def _execute(self, image: OpenmodelicaPythonImage, stage: Stage) -> None:
-        process = await create_subprocess_exec(*image.command(stage), stdout=PIPE)
+        cmd = image.command(stage)
+        process = await create_subprocess_exec(*cmd, stdout=PIPE)
         self.process_start.emit(image, stage)
         if process.stdout is None:
             raise RuntimeError
         async for line in process.stdout:
             self.process_output.emit(image, stage, line)
         self.process_returncode.emit(image, stage, process.returncode)
+        if process.returncode:
+            raise CalledProcessError(returncode=process.returncode, cmd=cmd)
