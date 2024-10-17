@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from asyncio import Lock, TimeoutError, gather, wait_for
 from collections.abc import AsyncGenerator, Callable, Coroutine
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
 from operator import itemgetter
@@ -10,10 +11,15 @@ from typing import IO, Any, ParamSpec, TypeVar, TypeVarTuple
 
 import click
 import tomllib
+from PySide6.QtWidgets import QApplication
 
-from . import builder
-from .builder import OpenmodelicaPythonImage
+from .builder import (
+    categorize_by_ubuntu_release,
+    search_python_versions,
+)
 from .config import Config
+from .model.builder import Builder, OpenmodelicaPythonImage
+from .widget.mainwindow import MainWindow
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -39,9 +45,9 @@ def execute_coroutine(f: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
 async def main(config_io: IO[bytes], limit: int) -> None:
     config = Config.model_validate(tomllib.load(config_io))
 
-    pythons = await builder.search_python_versions(config.python)
+    pythons = await search_python_versions(config.python)
 
-    ubuntu_openmodelica = await builder.categorize_by_ubuntu_release(config.from_)
+    ubuntu_openmodelica = await categorize_by_ubuntu_release(config.from_)
 
     images = {
         OpenmodelicaPythonImage(
@@ -68,12 +74,35 @@ async def main(config_io: IO[bytes], limit: int) -> None:
 
     assert (group0 | group1 | group2) == images
 
-    await gather(*(image.pull() for image in images), return_exceptions=True)
-    for group in [group0, group1, group2]:
-        await gather(*(image.build() for image in sorted(group)))
-    await gather(*(image.push() for image in images))
-    for image in sorted(images):
-        print(image)
+    with ThreadPoolExecutor() as executor:
+        app = QApplication()
+
+        builder = Builder(
+            executor=executor,
+            groups=(group0, group1, group2),
+        )
+
+        mainWindow = MainWindow(config=config)
+        mainWindow.setImages(images)
+
+        # Connect model & view
+        builder.process_start.connect(mainWindow.update_process_status)
+        builder.process_returncode.connect(mainWindow.update_process_status)
+
+        mainWindow.ui.startButton.pressed.connect(builder.start)
+
+        mainWindow.show()
+
+        builder.start.emit()
+
+        exit(app.exec())
+
+    # await gather(*(image.pull() for image in images), return_exceptions=True)
+    # for group in [group0, group1, group2]:
+    #     await gather(*(image.build() for image in sorted(group)))
+    # await gather(*(image.push() for image in images))
+    # for image in sorted(images):
+    #     print(image)
 
 
 @asynccontextmanager
