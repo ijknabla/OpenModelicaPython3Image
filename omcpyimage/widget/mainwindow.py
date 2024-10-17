@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
 from ..builder import OpenmodelicaPythonImage
+from ..config import Config
 from ..model.builder import Stage
 from ..types import LongVersion
 from ..ui.mainwindow import Ui_MainWindow
@@ -16,8 +17,12 @@ class MainWindow(QMainWindow):
         self,
         parent: QWidget | None = None,
         flags: Qt.WindowType | None = None,
+        *,
+        config: Config,
     ) -> None:
         super().__init__(parent, flags if flags is not None else Qt.WindowType(0))
+
+        self.config = config
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)  # type: ignore [no-untyped-call]

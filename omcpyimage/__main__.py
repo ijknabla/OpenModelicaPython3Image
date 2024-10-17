@@ -82,7 +82,7 @@ async def main(config_io: IO[bytes], limit: int) -> None:
             executor=executor, group0=group0, group1=group1, group2=group2
         )
 
-        mainWindow = MainWindow()
+        mainWindow = MainWindow(config=config)
         mainWindow.setImages(images)
 
         builder.process_start.connect(mainWindow.update_process_status)
