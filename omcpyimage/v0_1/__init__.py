@@ -32,6 +32,10 @@ class Version(BaseModel):
         )
 
     @property
+    def short(self) -> ShortVersion:
+        return ShortVersion(major=self.major, minor=self.minor)
+
+    @property
     def tuple(self) -> tuple[int, int, int]:
         return self.major, self.minor, self.patch
 
@@ -44,3 +48,17 @@ class Version(BaseModel):
         if isinstance(obj, str):
             return cls.parse(obj, strict=True).model_dump()
         return obj
+
+
+class ShortVersion(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    major: StrictInt
+    minor: StrictInt
+
+    @property
+    def tuple(self) -> tuple[int, int]:
+        return self.major, self.minor
+
+    def __str__(self) -> str:
+        return ".".join(map(str, self.tuple))
