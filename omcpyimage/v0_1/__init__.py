@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from importlib.resources import read_text
+from typing import TYPE_CHECKING, NewType
 
 from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 
 if TYPE_CHECKING:
     from typing import Any, Self
+
+OMVersion = NewType("OMVersion", "Version")
 
 
 class Version(BaseModel):
@@ -62,3 +65,7 @@ class ShortVersion(BaseModel):
 
     def __str__(self) -> str:
         return ".".join(map(str, self.tuple))
+
+
+def format_openmodelica_stage(version: OMVersion) -> str:
+    return read_text(__package__, "OpenModelicaStage.in").format(version=version)
