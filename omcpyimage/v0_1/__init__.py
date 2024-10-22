@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
 OMVersion = NewType("OMVersion", "Version")
+PyVersion = NewType("PyVersion", "Version")
 
 
 class Version(BaseModel):
@@ -69,3 +70,7 @@ class ShortVersion(BaseModel):
 
 def format_openmodelica_stage(version: OMVersion) -> str:
     return read_text(__package__, "OpenModelicaStage.in").format(version=version)
+
+
+def format_python_stage(version: PyVersion) -> str:
+    return read_text(__package__, "PythonStage.in").format(version=version)
