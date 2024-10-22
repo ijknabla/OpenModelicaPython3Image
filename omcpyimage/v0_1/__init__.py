@@ -2,12 +2,28 @@ from __future__ import annotations
 
 import re
 from importlib.resources import read_text
+from itertools import chain
 from typing import TYPE_CHECKING, NewType
 
 from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any, Self
+
+
+def format_dockerfile(
+    stage: Sequence[Stage],
+) -> str:
+    openmodelica = sorted({s.om for s in stage}, key=lambda x: x.tuple)
+    python = sorted({s.py for s in stage}, key=lambda x: x.tuple)
+    return "\n\n".join(
+        chain(
+            (format_openmodelica_stage(om) for om in openmodelica),
+            (format_python_stage(py) for py in python),
+            (format_final_stage(s) for s in stage),
+        )
+    )
 
 
 class Stage(BaseModel):
