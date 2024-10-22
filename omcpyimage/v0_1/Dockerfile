@@ -29,9 +29,15 @@ RUN \
     && cp -r /build/install /artifact/usr
 
 
+FROM ubuntu:22.04 AS python-3.12.7-build
+RUN \
+    mkdir -p /artifact/usr
+
+
 FROM ubuntu:22.04
 
 COPY --from=openmodelica-v1.24.0-build /artifact/usr/ /usr/
+COPY --from=python-3.12.7-build        /artifact/usr/ /usr/
 RUN \
     apt update \
     && apt install -y \
