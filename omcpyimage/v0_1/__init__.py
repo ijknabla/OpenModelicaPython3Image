@@ -9,6 +9,14 @@ from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 if TYPE_CHECKING:
     from typing import Any, Self
 
+
+class Stage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    om: OMVersion
+    py: PyVersion
+
+
 OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")
 
@@ -74,3 +82,7 @@ def format_openmodelica_stage(version: OMVersion) -> str:
 
 def format_python_stage(version: PyVersion) -> str:
     return read_text(__package__, "PythonStage.in").format(version=version)
+
+
+def format_final_stage(stage: Stage) -> str:
+    return read_text(__package__, "FinalStage.in").format(stage=stage)
