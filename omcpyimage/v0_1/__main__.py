@@ -6,12 +6,12 @@ from asyncio import run
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from functools import wraps
 from importlib.resources import as_file, files
-from itertools import chain
+from itertools import product
 from typing import IO, TYPE_CHECKING
 
 import click
 
-from . import Version, format_openmodelica_stage, format_python_stage
+from . import Stage, Version, format_dockerfile
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -36,15 +36,14 @@ def dockerfile(
 ) -> None:
     print(f"{openmodelica=!r}", file=sys.stderr)
     print(f"{python=!r}", file=sys.stderr)
-
-    output.write(
-        "\n\n".join(
-            chain(
-                (format_openmodelica_stage(om) for om in openmodelica),
-                (format_python_stage(py) for py in python),
-            )
+    stage = [
+        Stage(om=om, py=py)
+        for om, py in product(
+            sorted(set(openmodelica), key=lambda x: x.tuple),
+            sorted(set(python), key=lambda x: x.tuple),
         )
-    )
+    ]
+    output.write(format_dockerfile(stage))
 
 
 @main.command()
