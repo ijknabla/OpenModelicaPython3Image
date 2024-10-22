@@ -31,6 +31,7 @@ RUN \
 
 FROM ubuntu:22.04 AS python-3.12.7-build
 
+SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 RUN \
     apt-get update \
@@ -38,6 +39,13 @@ RUN \
     build-essential libssl-dev zlib1g-dev \
     libbz2-dev libreadline-dev libsqlite3-dev curl git \
     libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+RUN \
+    curl -fsSL https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz | tar zxf - \
+    && pushd /Python-3.12.7 \
+    && ./configure --enable-optimizations --without-static-libpython --prefix /build/install \
+    && make -j4 \
+    && make install \
+    && popd
 RUN \
     mkdir -p /artifact/usr
 
