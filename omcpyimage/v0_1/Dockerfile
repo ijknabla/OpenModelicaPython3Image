@@ -47,7 +47,9 @@ RUN \
     && make install \
     && popd
 RUN \
-    mkdir -p /artifact/usr
+    mkdir /artifact \
+    && cp -r /build/install /artifact/usr \
+    && find /artifact/ -type l | xargs rm
 
 
 FROM ubuntu:22.04
@@ -61,4 +63,9 @@ RUN \
     make clang libgfortran-12-dev libcurl4 libblas-dev liblapack-dev \
     libssl3 zlib1g \
     libbz2-1.0 libreadline8 libsqlite3-0 git \
-    libncursesw6 tk libxml2 libxmlsec1 libffi8 liblzma5
+    libncursesw6 tk libxml2 libxmlsec1 libffi8 liblzma5 \
+    && update-alternatives --install /usr/bin/2to3   2to3   /usr/bin/2to3-3.12  10 \
+    && update-alternatives --install /usr/bin/idle   idle   /usr/bin/idle3.12   10 \
+    && update-alternatives --install /usr/bin/pip    pip    /usr/bin/pip3.12    10 \
+    && update-alternatives --install /usr/bin/pydoc  pydoc  /usr/bin/pydoc3.12  10 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.12 10
