@@ -11,12 +11,11 @@ RUN \
 RUN \
     apt update \
     && apt build-dep -y openmodelica
-COPY omc_patch.py /
 RUN \
     apt update \
     && apt install -y git \
     && git clone --recursive -b v1.24.0 https://github.com/OpenModelica/OpenModelica.git source \
-    && find source -type f -name '*.mo' | xargs python3 /omc_patch.py
+    && find source/OMCompiler/ -name '*.mo' | xargs sed -i 's/System\.userIsRoot()/false/g'
 RUN \
     cmake -S source -B build \
     -DOM_USE_CCACHE=OFF -DCMAKE_BUILD_TYPE=MinSizeRel \
