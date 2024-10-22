@@ -52,7 +52,7 @@ RUN \
     && find /artifact/ -type l | xargs rm
 
 
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS v1.24.0-python3.12.7
 
 COPY --from=openmodelica-v1.24.0-build /artifact/usr/ /usr/
 COPY --from=python-3.12.7-build        /artifact/usr/ /usr/
