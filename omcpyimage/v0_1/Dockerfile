@@ -17,3 +17,10 @@ RUN \
     && apt install -y git \
     && git clone --recursive -b v1.24.0 https://github.com/OpenModelica/OpenModelica.git source \
     && find source -type f -name '*.mo' | xargs python3 /omc_patch.py
+RUN \
+    cmake -S source -B build \
+    -DOM_USE_CCACHE=OFF -DCMAKE_BUILD_TYPE=MinSizeRel \
+    -DOM_ENABLE_GUI_CLIENTS=OFF -DOM_OMC_ENABLE_CPP_RUNTIME=OFF \
+    -DCMINPACK_BUILD_SHARED_LIBS=ON \
+    -DCMAKE_INSTALL_PREFIX=/build/install \
+    && make -C build -j4 install
