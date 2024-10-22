@@ -54,9 +54,8 @@ async def build() -> None:
     for s in stage:
         tags[s].append(f"ijknabla:openmodelicav{s.om!s}-python{s.py!s}")
 
-    writing_image = re.compile(r"writing image sha256:(?P<sha256>[0-9a-f]{64})")
-
-    images = list[str]()
+    naming_to_image = re.compile(r"naming to (?P<image>\S+)")
+    image = list[str]()
 
     docker_build = await create_subprocess_exec(
         "docker",
@@ -78,12 +77,12 @@ async def build() -> None:
     async for _line in docker_build.stderr:
         line = _line.decode("utf-8")
         print(line, end="", file=sys.stderr)
-        if matched := writing_image.search(line):
-            images.append(matched.group("sha256"))
+        if matched := naming_to_image.search(line):
+            image.append(matched.group("image"))
 
     print("=" * 79)
-    for image in images:
-        print(f"docker run -it {image}")
+    for _image in image:
+        print(f"docker run -it {_image}")
     print("=" * 79)
 
     sys.exit(docker_build.returncode)
