@@ -16,8 +16,14 @@ async def main() -> None:
     images = list[str]()
 
     with as_file(files(__package__)) as directory:
+        target = "v1.24.0-python3.12.7"
         docker_build = await create_subprocess_exec(
-            "docker", "build", f"{directory}", stderr=PIPE
+            "docker",
+            "build",
+            f"{directory}",
+            f"--target={target}",
+            f"-tijknabla/openmodelica:{target}",
+            stderr=PIPE,
         )
         if docker_build.stderr is None:
             raise RuntimeError
