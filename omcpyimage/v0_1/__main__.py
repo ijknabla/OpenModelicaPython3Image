@@ -11,7 +11,7 @@ import click
 @click.command()
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
 async def main() -> None:
-    writing_image = re.compile(r"writing image sha256:(?P<sha256>[0-9a-f]{64}) done")
+    writing_image = re.compile(r"writing image sha256:(?P<sha256>[0-9a-f]{64})")
 
     images = list[str]()
 
