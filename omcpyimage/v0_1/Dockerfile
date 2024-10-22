@@ -30,6 +30,14 @@ RUN \
 
 
 FROM ubuntu:22.04 AS python-3.12.7-build
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN \
+    apt-get update \
+    && apt-get install -y \
+    build-essential libssl-dev zlib1g-dev \
+    libbz2-dev libreadline-dev libsqlite3-dev curl git \
+    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 RUN \
     mkdir -p /artifact/usr
 
@@ -38,7 +46,11 @@ FROM ubuntu:22.04
 
 COPY --from=openmodelica-v1.24.0-build /artifact/usr/ /usr/
 COPY --from=python-3.12.7-build        /artifact/usr/ /usr/
+ENV DEBIAN_FRONTEND=noninteractive
 RUN \
     apt update \
     && apt install -y \
-    make clang libgfortran-12-dev libcurl4 libblas-dev liblapack-dev
+    make clang libgfortran-12-dev libcurl4 libblas-dev liblapack-dev \
+    libssl3 zlib1g \
+    libbz2-1.0 libreadline8 libsqlite3-0 git \
+    libncursesw6 tk libxml2 libxmlsec1 libffi8 liblzma5
