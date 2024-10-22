@@ -1,11 +1,22 @@
+from __future__ import annotations
+
 import re
 import sys
 from asyncio import run
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from functools import wraps
 from importlib.resources import as_file, files
+from itertools import chain
+from typing import IO, TYPE_CHECKING
 
 import click
+
+from . import Version, format_openmodelica_stage
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from . import OMVersion
 
 
 @click.group()
@@ -13,7 +24,20 @@ def main() -> None: ...
 
 
 @main.command()
-def dockerfile() -> None: ...
+@click.option("--openmodelica", "--om", multiple=True, type=Version.parse)
+@click.option(
+    "--output", type=click.File("w", encoding="utf-8", lazy=True), default=sys.stdout
+)
+def dockerfile(openmodelica: Sequence[OMVersion], output: IO[str]) -> None:
+    print(f"{openmodelica=!r}", file=sys.stderr)
+
+    output.write(
+        "\n\n".join(
+            chain(
+                (format_openmodelica_stage(version=om) for om in openmodelica),
+            )
+        )
+    )
 
 
 @main.command()
