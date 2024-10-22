@@ -4,8 +4,9 @@ import re
 import sys
 from asyncio import run
 from asyncio.subprocess import PIPE, create_subprocess_exec
+from collections import defaultdict
 from functools import wraps
-from itertools import product
+from itertools import chain, product
 from typing import IO, TYPE_CHECKING
 
 import click
@@ -49,6 +50,9 @@ def dockerfile(
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
 async def build() -> None:
     stage = [Stage.model_validate({"om": "1.24.0", "py": "3.12.7"})]
+    tags = defaultdict[Stage, list[str]](lambda: [])
+    for s in stage:
+        tags[s].append(f"ijknabla:openmodelicav{s.om!s}-python{s.py!s}")
 
     writing_image = re.compile(r"writing image sha256:(?P<sha256>[0-9a-f]{64})")
 
@@ -58,6 +62,10 @@ async def build() -> None:
         "docker",
         "build",
         "-",
+        *chain.from_iterable(
+            ["--target", f"openmodelica{s.om!s}-python{s.py!s}", "-t", ",".join(t)]
+            for s, t in tags.items()
+        ),
         stdin=PIPE,
         stderr=PIPE,
     )
