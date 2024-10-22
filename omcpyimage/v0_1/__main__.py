@@ -11,12 +11,12 @@ from typing import IO, TYPE_CHECKING
 
 import click
 
-from . import Version, format_openmodelica_stage
+from . import Version, format_openmodelica_stage, format_python_stage
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from . import OMVersion
+    from . import OMVersion, PyVersion
 
 
 @click.group()
@@ -25,16 +25,23 @@ def main() -> None: ...
 
 @main.command()
 @click.option("--openmodelica", "--om", multiple=True, type=Version.parse)
+@click.option("--python", "--py", multiple=True, type=Version.parse)
 @click.option(
     "--output", type=click.File("w", encoding="utf-8", lazy=True), default=sys.stdout
 )
-def dockerfile(openmodelica: Sequence[OMVersion], output: IO[str]) -> None:
+def dockerfile(
+    openmodelica: Sequence[OMVersion],
+    python: Sequence[PyVersion],
+    output: IO[str],
+) -> None:
     print(f"{openmodelica=!r}", file=sys.stderr)
+    print(f"{python=!r}", file=sys.stderr)
 
     output.write(
         "\n\n".join(
             chain(
-                (format_openmodelica_stage(version=om) for om in openmodelica),
+                (format_openmodelica_stage(om) for om in openmodelica),
+                (format_python_stage(py) for py in python),
             )
         )
     )
