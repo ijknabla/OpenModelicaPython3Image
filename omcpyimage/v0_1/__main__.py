@@ -13,6 +13,10 @@ def main() -> None: ...
 
 
 @main.command()
+def dockerfile() -> None: ...
+
+
+@main.command()
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
 async def build() -> None:
     writing_image = re.compile(r"writing image sha256:(?P<sha256>[0-9a-f]{64})")
