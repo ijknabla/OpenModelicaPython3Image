@@ -19,9 +19,9 @@ def format_dockerfile(
     python = sorted({s.py for s in stage}, key=lambda x: x.tuple)
     return "\n\n".join(
         chain(
-            (format_openmodelica_stage(om) for om in openmodelica),
-            (format_python_stage(py) for py in python),
-            (format_final_stage(s) for s in stage),
+            (_format_openmodelica_stage(om) for om in openmodelica),
+            (_format_python_stage(py) for py in python),
+            (_format_final_stage(s) for s in stage),
         )
     )
 
@@ -92,13 +92,13 @@ class ShortVersion(BaseModel):
         return ".".join(map(str, self.tuple))
 
 
-def format_openmodelica_stage(version: OMVersion) -> str:
+def _format_openmodelica_stage(version: OMVersion) -> str:
     return read_text(__package__, "OpenModelicaStage.in").format(version=version)
 
 
-def format_python_stage(version: PyVersion) -> str:
+def _format_python_stage(version: PyVersion) -> str:
     return read_text(__package__, "PythonStage.in").format(version=version)
 
 
-def format_final_stage(stage: Stage) -> str:
+def _format_final_stage(stage: Stage) -> str:
     return read_text(__package__, "FinalStage.in").format(stage=stage)
