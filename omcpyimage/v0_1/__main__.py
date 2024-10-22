@@ -62,7 +62,7 @@ async def build() -> None:
         "build",
         "-",
         *chain.from_iterable(
-            ["--target", f"openmodelica{s.om!s}-python{s.py!s}", "-t", ",".join(t)]
+            ["--target", f"openmodelica{s.om!s}-python{s.py!s}", "--tag", ",".join(t)]
             for s, t in tags.items()
         ),
         stdin=PIPE,
