@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS openmodelica-v1.24.0-build
 
 # https://github.com/OpenModelica/OpenModelica/blob/master/OMCompiler/README.Linux.md#11-debianubuntu
 RUN \
@@ -24,3 +24,15 @@ RUN \
     -DCMINPACK_BUILD_SHARED_LIBS=ON \
     -DCMAKE_INSTALL_PREFIX=/build/install \
     && make -C build -j4 install
+RUN \
+    mkdir /artifact \
+    && cp -r /build/install /artifact/usr
+
+
+FROM ubuntu:22.04
+
+COPY --from=openmodelica-v1.24.0-build /artifact/usr/ /usr/
+RUN \
+    apt update \
+    && apt install -y \
+    make clang libgfortran-12-dev libcurl4 libblas-dev liblapack-dev
