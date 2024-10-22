@@ -8,9 +8,13 @@ from importlib.resources import as_file, files
 import click
 
 
-@click.command()
+@click.group()
+def main() -> None: ...
+
+
+@main.command()
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
-async def main() -> None:
+async def build() -> None:
     writing_image = re.compile(r"writing image sha256:(?P<sha256>[0-9a-f]{64})")
 
     images = list[str]()
