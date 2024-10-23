@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from . import Image, Version
+from . import Image, ShortVersion, Version
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,6 +41,14 @@ async def build(
     tags = defaultdict[Image, list[str]](lambda: [])
     for im in image:
         tags[im].append(f"ijknabla/openmodelica:v{im.om!s}-python{im.py!s}")
+
+    categories = defaultdict[tuple[ShortVersion, ShortVersion], list[Image]](lambda: [])
+    for im in image:
+        categories[(im.om.short, im.py.short)].append(im)
+    for (om, py), ims in categories.items():
+        tags[max(ims, key=lambda x: x.as_tuple)].append(
+            f"ijknabla/openmodelica:v{om!s}-python{py!s}"
+        )
 
     dockerfile = read_binary(__package__, "Dockerfile")
 
