@@ -36,6 +36,23 @@ class Image(BaseModel):
     def as_tuple(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
         return self.om.as_tuple, self.py.as_tuple
 
+    @property
+    def docker_build_arg(self) -> tuple[str, ...]:
+        return (
+            "--build-arg",
+            f"OM_MAJOR={self.om.major}",
+            "--build-arg",
+            f"OM_MINOR={self.om.minor}",
+            "--build-arg",
+            f"OM_PATCH={self.om.patch}",
+            "--build-arg",
+            f"PY_MAJOR={self.py.major}",
+            "--build-arg",
+            f"PY_MINOR={self.py.minor}",
+            "--build-arg",
+            f"PY_PATCH={self.py.patch}",
+        )
+
 
 OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")
