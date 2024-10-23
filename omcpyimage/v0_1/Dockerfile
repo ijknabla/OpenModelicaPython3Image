@@ -66,3 +66,27 @@ RUN \
     mkdir /artifact \
     && cp -r /build/install /artifact/usr \
     && find /artifact/ -type l | xargs rm
+
+
+FROM ubuntu:22.04 AS final
+
+ARG PY_MAJOR
+ARG PY_MINOR
+ENV PY_SHORT_VERSION=${PY_MAJOR}.${PY_MINOR}
+ENV DEBIAN_FRONTEND=noninteractive
+
+COPY --from=openmodelica /artifact/usr/ /usr/
+COPY --from=python       /artifact/usr/ /usr/
+RUN \
+    apt update \
+    && apt install -y \
+    make clang libgfortran-12-dev libcurl4 libblas-dev liblapack-dev \
+    libssl3 zlib1g \
+    libbz2-1.0 libreadline8 libsqlite3-0 git \
+    libncursesw6 tk libxml2 libxmlsec1 libffi8 liblzma5 \
+    && update-alternatives --install /usr/bin/2to3   2to3   /usr/bin/2to3-${PY_SHORT_VERSION}  10 \
+    && update-alternatives --install /usr/bin/idle   idle   /usr/bin/idle${PY_SHORT_VERSION}   10 \
+    && update-alternatives --install /usr/bin/pip    pip    /usr/bin/pip${PY_SHORT_VERSION}    10 \
+    && update-alternatives --install /usr/bin/pydoc  pydoc  /usr/bin/pydoc${PY_SHORT_VERSION}  10 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python${PY_SHORT_VERSION} 10 \
+    && rm -rf /var/lib/apt/lists/*
