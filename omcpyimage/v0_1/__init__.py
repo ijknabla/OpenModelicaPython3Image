@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, NewType
+from asyncio.subprocess import Process
+from contextlib import asynccontextmanager
+from functools import wraps
+from subprocess import CalledProcessError
+from typing import TYPE_CHECKING, NewType, ParamSpec
 
 from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Coroutine
+    from contextlib import AbstractAsyncContextManager
     from typing import Any, Self
+
+P = ParamSpec("P")
 
 
 class Image(BaseModel):
@@ -94,3 +102,25 @@ class ShortVersion(BaseModel):
 
     def __str__(self) -> str:
         return ".".join(map(str, self.as_tuple))
+
+
+def _create2open(
+    f: Callable[P, Coroutine[Any, Any, Process]],
+) -> Callable[P, AbstractAsyncContextManager[Process]]:
+    @wraps(f)
+    @asynccontextmanager
+    async def wrapped(*cmd: P.args, **kwargs: P.kwargs) -> AsyncIterator[Process]:
+        process = await f(*cmd, **kwargs)
+        try:
+            yield process
+        finally:
+            match process.returncode:
+                case 0:
+                    return
+                case None:
+                    process.terminate()
+                    await process.wait()
+                case returncode:
+                    raise CalledProcessError(returncode, cmd)  # type: ignore [arg-type]
+
+    return wrapped
