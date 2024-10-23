@@ -1,29 +1,12 @@
 from __future__ import annotations
 
 import re
-from importlib.resources import read_text
-from itertools import chain
 from typing import TYPE_CHECKING, NewType
 
 from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Any, Self
-
-
-def format_dockerfile(
-    image: Sequence[Image],
-) -> str:
-    openmodelica = sorted({im.om for im in image}, key=lambda x: x.as_tuple)
-    python = sorted({im.py for im in image}, key=lambda x: x.as_tuple)
-    return "\n\n".join(
-        chain(
-            (_format_openmodelica_stage(om) for om in openmodelica),
-            (_format_python_stage(py) for py in python),
-            (_format_final_stage(im) for im in image),
-        )
-    )
 
 
 class Image(BaseModel):
@@ -111,15 +94,3 @@ class ShortVersion(BaseModel):
 
     def __str__(self) -> str:
         return ".".join(map(str, self.as_tuple))
-
-
-def _format_openmodelica_stage(version: OMVersion) -> str:
-    return read_text(__package__, "OpenModelicaStage.in").format(version=version)
-
-
-def _format_python_stage(version: PyVersion) -> str:
-    return read_text(__package__, "PythonStage.in").format(version=version)
-
-
-def _format_final_stage(image: Image) -> str:
-    return read_text(__package__, "FinalStage.in").format(stage=image)
