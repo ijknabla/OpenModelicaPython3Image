@@ -66,6 +66,42 @@ class Image(BaseModel):
 
             await docker_build.wait()
 
+    @property
+    def _check_command(self) -> tuple[str, ...]:
+        script = f"""\
+import sys
+from logging import *
+from omc4py import *
+from pathlib import *
+
+assert sys.version.startswith("{self.py!s}"), "Check Python version"
+
+logger=getLogger("omc4py")
+logger.addHandler(StreamHandler())
+logger.setLevel(DEBUG)
+s=open_session()
+
+version = s.getVersion(); s.__check__()
+assert version.startswith(f"v{self.om!s}"), "Check OpenModelica version"
+
+installed = s.installPackage("Modelica"); s.__check__()
+assert installed, "Install Modelica package"
+
+loaded = s.loadModel("Modelica"); s.__check__()
+assert loaded, "Load Modelica package"
+
+result = s.simulate("Modelica.Blocks.Examples.PID_Controller"); s.__check__()
+assert \
+    "The simulation finished successfully." in result.messages, \
+    "Check simulation result"
+assert Path(result.resultFile).exists(), "Check simulation output"
+"""
+        return (
+            "bash",
+            "-c",
+            f"python -m pip install openmodelicacompiler && python -c '{script}'",
+        )
+
 
 OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")
