@@ -46,6 +46,8 @@ async def build(
     for im in image:
         tags[im].append(f"ijknabla/openmodelica:v{im.om!s}-python{im.py!s}")
 
+    dockerfile = read_binary(__package__, "Dockerfile")
+
     for im in image:
         cmd = (
             "docker",
@@ -63,7 +65,7 @@ async def build(
         if docker_build.stdin is None:
             raise RuntimeError
 
-        docker_build.stdin.write(read_binary(__package__, "Dockerfile"))
+        docker_build.stdin.write(dockerfile)
         docker_build.stdin.write_eof()
 
         returncode = await docker_build.wait()
