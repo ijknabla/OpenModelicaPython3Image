@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import sys
-from asyncio import run
+from asyncio import gather, run
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from collections import defaultdict
 from functools import wraps
@@ -50,10 +50,12 @@ def dockerfile(
 @main.command()
 @click.option("--openmodelica", "--om", multiple=True, type=Version.parse)
 @click.option("--python", "--py", multiple=True, type=Version.parse)
+@click.option("--check/--no-check", default=False)
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
 async def build(
     openmodelica: Sequence[OMVersion],
     python: Sequence[PyVersion],
+    check: bool,
 ) -> None:
     stage = [
         Stage(om=om, py=py)
@@ -104,6 +106,38 @@ async def build(
     for _image in image:
         print(f"docker run -it {_image}")
     print("=" * 79)
+
+    await gather(*(_post_build(s, t, check=check) for s, t in tags.items()))
+
+
+async def _post_build(stage: Stage, tags: Sequence[str], *, check: bool) -> None:
+    if check:
+        script = f"""\
+import sys
+assert sys.version.startswith("{stage.py!s}")
+from logging import *
+from omc4py import *
+logger=getLogger("omc4py")
+logger.addHandler(StreamHandler())
+logger.setLevel(DEBUG)
+s=open_session()
+assert s.getVersion().startswith(f"v{stage.om!s}")
+assert s.installPackage("Modelica")
+s.simulate("Modelica.Blocks.Examples.PID_Controller")
+s.__check__()
+"""
+        cmd = (
+            "docker",
+            "run",
+            tags[0],
+            "bash",
+            "-c",
+            f"python -m pip install openmodelicacompiler && python -c '{script}'",
+        )
+        docker_run = await create_subprocess_exec(*cmd)
+        returncode = await docker_run.wait()
+        if returncode:
+            raise CalledProcessError(returncode=returncode, cmd=cmd)
 
 
 if __name__ == "__main__":
