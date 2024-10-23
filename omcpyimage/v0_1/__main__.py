@@ -76,15 +76,9 @@ async def build(
             "build",
             *im.docker_build_arg,
             "-",
-            # *chain.from_iterable(
-            #     [
-            #         "--target",
-            #         f"openmodelica{s.om!s}-python{s.py!s}",
-            #         "--tag",
-            #         ",".join(t),
-            #     ]
-            #     for s, t in tags.items()
-            # ),
+            "--target=final",
+            "--tag",
+            ",".join(tags[im]),
         )
         docker_build = await create_subprocess_exec(
             *cmd,
