@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from asyncio.subprocess import Process
-from contextlib import asynccontextmanager
+from asyncio.subprocess import PIPE, Process, create_subprocess_exec
+from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, NewType, ParamSpec
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, NewType, ParamSpec
 from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable, Coroutine
+    from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
     from contextlib import AbstractAsyncContextManager
     from typing import Any, Self
 
@@ -43,6 +43,28 @@ class Image(BaseModel):
             "--build-arg",
             f"PY_PATCH={self.py.patch}",
         )
+
+    async def deploy(self, dockerfile: bytes, tags: Sequence[str]) -> None:
+        async with AsyncExitStack() as stack:
+            docker_build = await stack.enter_async_context(
+                _create2open(create_subprocess_exec)(
+                    "docker",
+                    "build",
+                    *self.docker_build_arg,
+                    "-",
+                    "--target=final",
+                    "--tag",
+                    ",".join(tags),
+                    stdin=PIPE,
+                )
+            )
+            if docker_build.stdin is None:
+                raise RuntimeError
+
+            docker_build.stdin.write(dockerfile)
+            docker_build.stdin.write_eof()
+
+            await docker_build.wait()
 
 
 OMVersion = NewType("OMVersion", "Version")
