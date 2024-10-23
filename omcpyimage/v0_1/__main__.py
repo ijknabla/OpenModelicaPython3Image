@@ -39,8 +39,8 @@ def dockerfile(
     stage = [
         Image(om=om, py=py)
         for om, py in product(
-            sorted(set(openmodelica), key=lambda x: x.tuple),
-            sorted(set(python), key=lambda x: x.tuple),
+            sorted(set(openmodelica), key=lambda x: x.as_tuple),
+            sorted(set(python), key=lambda x: x.as_tuple),
         )
     ]
     output.write(format_dockerfile(stage))
@@ -61,8 +61,8 @@ async def build(
     image = [
         Image(om=om, py=py)
         for om, py in product(
-            sorted(set(openmodelica), key=lambda x: x.tuple),
-            sorted(set(python), key=lambda x: x.tuple),
+            sorted(set(openmodelica), key=lambda x: x.as_tuple),
+            sorted(set(python), key=lambda x: x.as_tuple),
         )
     ]
     tags = defaultdict[Image, list[str]](lambda: [])
@@ -99,7 +99,7 @@ async def build(
         )
 
     print("=" * 72)
-    for _, tt in sorted(tags.items(), key=lambda kv: kv[0].tuple):
+    for _, tt in sorted(tags.items(), key=lambda kv: kv[0].as_tuple):
         for t in tt:
             print(f"- {t}")
     print("=" * 72)

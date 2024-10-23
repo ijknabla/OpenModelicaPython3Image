@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 def format_dockerfile(
     image: Sequence[Image],
 ) -> str:
-    openmodelica = sorted({im.om for im in image}, key=lambda x: x.tuple)
-    python = sorted({im.py for im in image}, key=lambda x: x.tuple)
+    openmodelica = sorted({im.om for im in image}, key=lambda x: x.as_tuple)
+    python = sorted({im.py for im in image}, key=lambda x: x.as_tuple)
     return "\n\n".join(
         chain(
             (_format_openmodelica_stage(om) for om in openmodelica),
@@ -33,8 +33,8 @@ class Image(BaseModel):
     py: PyVersion
 
     @property
-    def tuple(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-        return self.om.tuple, self.py.tuple
+    def as_tuple(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return self.om.as_tuple, self.py.as_tuple
 
 
 OMVersion = NewType("OMVersion", "Version")
@@ -68,11 +68,11 @@ class Version(BaseModel):
         return ShortVersion(major=self.major, minor=self.minor)
 
     @property
-    def tuple(self) -> tuple[int, int, int]:
+    def as_tuple(self) -> tuple[int, int, int]:
         return self.major, self.minor, self.patch
 
     def __str__(self) -> str:
-        return ".".join(map(str, self.tuple))
+        return ".".join(map(str, self.as_tuple))
 
     @model_validator(mode="before")  # type: ignore [arg-type]
     @classmethod
@@ -89,11 +89,11 @@ class ShortVersion(BaseModel):
     minor: StrictInt
 
     @property
-    def tuple(self) -> tuple[int, int]:
+    def as_tuple(self) -> tuple[int, int]:
         return self.major, self.minor
 
     def __str__(self) -> str:
-        return ".".join(map(str, self.tuple))
+        return ".".join(map(str, self.as_tuple))
 
 
 def _format_openmodelica_stage(version: OMVersion) -> str:
