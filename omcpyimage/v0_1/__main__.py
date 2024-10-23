@@ -51,11 +51,13 @@ def dockerfile(
 @click.option("--openmodelica", "--om", multiple=True, type=Version.parse)
 @click.option("--python", "--py", multiple=True, type=Version.parse)
 @click.option("--check/--no-check", default=False)
+@click.option("--push/--no-push", default=False)
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
 async def build(
     openmodelica: Sequence[OMVersion],
     python: Sequence[PyVersion],
     check: bool,
+    push: bool,
 ) -> None:
     stage = [
         Stage(om=om, py=py)
@@ -107,11 +109,13 @@ async def build(
         print(f"docker run -it {_image}")
     print("=" * 79)
 
-    await gather(*(_post_build(s, t, check=check) for s, t in tags.items()))
+    await gather(*(_post_build(s, t, check=check, push=push) for s, t in tags.items()))
 
 
-async def _post_build(stage: Stage, tags: Sequence[str], *, check: bool) -> None:
-    if check:
+async def _post_build(
+    stage: Stage, tags: Sequence[str], *, check: bool, push: bool
+) -> None:
+    if check or push:
         script = f"""\
 import sys
 assert sys.version.startswith("{stage.py!s}")
@@ -126,7 +130,7 @@ assert s.installPackage("Modelica")
 s.simulate("Modelica.Blocks.Examples.PID_Controller")
 s.__check__()
 """
-        cmd = (
+        cmd: tuple[str, ...] = (
             "docker",
             "run",
             tags[0],
@@ -138,6 +142,18 @@ s.__check__()
         returncode = await docker_run.wait()
         if returncode:
             raise CalledProcessError(returncode=returncode, cmd=cmd)
+
+    if push:
+        for tag in tags:
+            cmd = (
+                "docker",
+                "push",
+                tag,
+            )
+            docker_run = await create_subprocess_exec(*cmd)
+            returncode = await docker_run.wait()
+            if returncode:
+                raise CalledProcessError(returncode=returncode, cmd=cmd)
 
 
 if __name__ == "__main__":
