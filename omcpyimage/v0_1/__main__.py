@@ -47,9 +47,20 @@ def dockerfile(
 
 
 @main.command()
+@click.option("--openmodelica", "--om", multiple=True, type=Version.parse)
+@click.option("--python", "--py", multiple=True, type=Version.parse)
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
-async def build() -> None:
-    stage = [Stage.model_validate({"om": "1.24.0", "py": "3.12.7"})]
+async def build(
+    openmodelica: Sequence[OMVersion],
+    python: Sequence[PyVersion],
+) -> None:
+    stage = [
+        Stage(om=om, py=py)
+        for om, py in product(
+            sorted(set(openmodelica), key=lambda x: x.tuple),
+            sorted(set(python), key=lambda x: x.tuple),
+        )
+    ]
     tags = defaultdict[Stage, list[str]](lambda: [])
     for s in stage:
         tags[s].append(f"ijknabla:openmodelicav{s.om!s}-python{s.py!s}")
