@@ -179,14 +179,12 @@ def _create2open(
         process = await f(*cmd, **kwargs)
         try:
             yield process
+            if process.returncode:
+                raise CalledProcessError(process.returncode, cmd)  # type: ignore [arg-type]
         finally:
             match process.returncode:
-                case 0:
-                    return
                 case None:
                     process.terminate()
                     await process.wait()
-                case returncode:
-                    raise CalledProcessError(returncode, cmd)  # type: ignore [arg-type]
 
     return wrapped
