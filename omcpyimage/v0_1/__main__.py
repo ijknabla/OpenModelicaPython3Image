@@ -5,7 +5,8 @@ from asyncio import gather, run
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from collections import defaultdict
 from functools import wraps
-from itertools import chain, product
+from importlib.resources import read_binary
+from itertools import product
 from subprocess import CalledProcessError
 from typing import IO, TYPE_CHECKING
 
@@ -69,34 +70,35 @@ async def build(
     for im in image:
         tags[im].append(f"ijknabla/openmodelica:v{im.om!s}-python{im.py!s}")
 
-    docker_build_cmd = (
-        "docker",
-        "build",
-        "-",
-        *chain.from_iterable(
-            ["--target", f"openmodelica{s.om!s}-python{s.py!s}", "--tag", ",".join(t)]
-            for s, t in tags.items()
-        ),
-    )
-    docker_build = await create_subprocess_exec(
-        *docker_build_cmd,
-        stdin=PIPE,
-        stderr=PIPE,
-    )
-    if docker_build.stdin is None or docker_build.stderr is None:
-        raise RuntimeError
-
-    docker_build.stdin.write(format_dockerfile(image).encode("utf-8"))
-    docker_build.stdin.write_eof()
-
-    async for _line in docker_build.stderr:
-        line = _line.decode("utf-8")
-        print(line, end="", file=sys.stderr)
-
-    if docker_build.returncode:
-        raise CalledProcessError(
-            returncode=docker_build.returncode, cmd=docker_build_cmd
+    for im in image:
+        cmd = (
+            "docker",
+            "build",
+            *im.docker_build_arg,
+            "-",
+            # *chain.from_iterable(
+            #     [
+            #         "--target",
+            #         f"openmodelica{s.om!s}-python{s.py!s}",
+            #         "--tag",
+            #         ",".join(t),
+            #     ]
+            #     for s, t in tags.items()
+            # ),
         )
+        docker_build = await create_subprocess_exec(
+            *cmd,
+            stdin=PIPE,
+        )
+        if docker_build.stdin is None:
+            raise RuntimeError
+
+        docker_build.stdin.write(read_binary(__package__, "Dockerfile"))
+        docker_build.stdin.write_eof()
+
+        returncode = await docker_build.wait()
+        if returncode:
+            raise CalledProcessError(returncode=returncode, cmd=cmd)
 
     print("=" * 72)
     for _, tt in sorted(tags.items(), key=lambda kv: kv[0].as_tuple):
