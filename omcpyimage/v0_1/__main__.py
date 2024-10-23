@@ -7,6 +7,7 @@ from asyncio.subprocess import PIPE, create_subprocess_exec
 from collections import defaultdict
 from functools import wraps
 from itertools import chain, product
+from subprocess import CalledProcessError
 from typing import IO, TYPE_CHECKING
 
 import click
@@ -68,7 +69,7 @@ async def build(
     naming_to_image = re.compile(r"naming to (?P<image>\S+)")
     image = list[str]()
 
-    docker_build = await create_subprocess_exec(
+    docker_build_cmd = (
         "docker",
         "build",
         "-",
@@ -76,6 +77,9 @@ async def build(
             ["--target", f"openmodelica{s.om!s}-python{s.py!s}", "--tag", ",".join(t)]
             for s, t in tags.items()
         ),
+    )
+    docker_build = await create_subprocess_exec(
+        *docker_build_cmd,
         stdin=PIPE,
         stderr=PIPE,
     )
@@ -91,12 +95,15 @@ async def build(
         if matched := naming_to_image.search(line):
             image.append(matched.group("image"))
 
+    if docker_build.returncode:
+        raise CalledProcessError(
+            returncode=docker_build.returncode, cmd=docker_build_cmd
+        )
+
     print("=" * 79)
     for _image in image:
         print(f"docker run -it {_image}")
     print("=" * 79)
-
-    sys.exit(docker_build.returncode)
 
 
 if __name__ == "__main__":
