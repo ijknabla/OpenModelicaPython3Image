@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import sys
 from asyncio import gather, run
 from asyncio.subprocess import PIPE, create_subprocess_exec
@@ -70,9 +69,6 @@ async def build(
     for s in stage:
         tags[s].append(f"ijknabla/openmodelica:v{s.om!s}-python{s.py!s}")
 
-    naming_to_image = re.compile(r"naming to (?P<image>\S+)")
-    image = list[str]()
-
     docker_build_cmd = (
         "docker",
         "build",
@@ -96,18 +92,11 @@ async def build(
     async for _line in docker_build.stderr:
         line = _line.decode("utf-8")
         print(line, end="", file=sys.stderr)
-        if matched := naming_to_image.search(line):
-            image.append(matched.group("image"))
 
     if docker_build.returncode:
         raise CalledProcessError(
             returncode=docker_build.returncode, cmd=docker_build_cmd
         )
-
-    print("=" * 79)
-    for _image in image:
-        print(f"docker run -it {_image}")
-    print("=" * 79)
 
     await gather(*(_post_build(s, t, check=check, push=push) for s, t in tags.items()))
 
