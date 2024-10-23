@@ -32,6 +32,10 @@ class Stage(BaseModel):
     om: OMVersion
     py: PyVersion
 
+    @property
+    def tuple(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return self.om.tuple, self.py.tuple
+
 
 OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")

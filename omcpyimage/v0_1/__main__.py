@@ -98,6 +98,10 @@ async def build(
             returncode=docker_build.returncode, cmd=docker_build_cmd
         )
 
+    for _, tt in sorted(tags.items(), key=lambda kv: kv[0].tuple):
+        for t in tt:
+            print(t)
+
     await gather(*(_post_build(s, t, check=check, push=push) for s, t in tags.items()))
 
 
