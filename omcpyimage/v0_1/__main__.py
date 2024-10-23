@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from asyncio import gather, run
-from asyncio.subprocess import create_subprocess_exec
 from collections import defaultdict
 from functools import wraps
 from importlib.resources import read_binary
 from itertools import product
-from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 import click
@@ -48,72 +46,13 @@ async def build(
 
     dockerfile = read_binary(__package__, "Dockerfile")
 
-    for im in image:
-        await im.deploy(dockerfile, tags[im])
+    await gather(*(im.deploy(dockerfile, tags[im], push=push) for im in image))
 
     print("=" * 72)
     for _, tt in sorted(tags.items(), key=lambda kv: kv[0].as_tuple):
         for t in tt:
             print(f"- {t}")
     print("=" * 72)
-
-    await gather(*(_post_build(s, t, check=check, push=push) for s, t in tags.items()))
-
-
-async def _post_build(
-    image: Image, tags: Sequence[str], *, check: bool, push: bool
-) -> None:
-    if check or push:
-        script = f"""\
-import sys
-from logging import *
-from omc4py import *
-from pathlib import *
-
-assert sys.version.startswith("{image.py!s}"), "Check Python version"
-
-logger=getLogger("omc4py")
-logger.addHandler(StreamHandler())
-logger.setLevel(DEBUG)
-s=open_session()
-
-version = s.getVersion(); s.__check__()
-assert version.startswith(f"v{image.om!s}"), "Check OpenModelica version"
-
-installed = s.installPackage("Modelica"); s.__check__()
-assert installed, "Install Modelica package"
-
-loaded = s.loadModel("Modelica"); s.__check__()
-assert loaded, "Load Modelica package"
-
-result = s.simulate("Modelica.Blocks.Examples.PID_Controller"); s.__check__()
-assert "The simulation finished successfully." in result.messages, "Check simulation result"
-assert Path(result.resultFile).exists(), "Check simulation output"
-"""  # noqa: E501
-        cmd: tuple[str, ...] = (
-            "docker",
-            "run",
-            tags[0],
-            "bash",
-            "-c",
-            f"python -m pip install openmodelicacompiler && python -c '{script}'",
-        )
-        docker_run = await create_subprocess_exec(*cmd)
-        returncode = await docker_run.wait()
-        if returncode:
-            raise CalledProcessError(returncode=returncode, cmd=cmd)
-
-    if push:
-        for tag in tags:
-            cmd = (
-                "docker",
-                "push",
-                tag,
-            )
-            docker_run = await create_subprocess_exec(*cmd)
-            returncode = await docker_run.wait()
-            if returncode:
-                raise CalledProcessError(returncode=returncode, cmd=cmd)
 
 
 if __name__ == "__main__":

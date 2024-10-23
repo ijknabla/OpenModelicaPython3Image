@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from asyncio import gather
 from asyncio.subprocess import PIPE, Process, create_subprocess_exec
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
@@ -44,7 +45,9 @@ class Image(BaseModel):
             f"PY_PATCH={self.py.patch}",
         )
 
-    async def deploy(self, dockerfile: bytes, tags: Sequence[str]) -> None:
+    async def deploy(
+        self, dockerfile: bytes, tags: Sequence[str], *, push: bool
+    ) -> None:
         async with AsyncExitStack() as stack:
             docker_build = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(
@@ -73,6 +76,20 @@ class Image(BaseModel):
             )
             if await check.wait():
                 return
+
+            if push:
+                await gather(
+                    *[
+                        (
+                            await stack.enter_async_context(
+                                _create2open(create_subprocess_exec)(
+                                    "docker", "push", tag
+                                )
+                            )
+                        ).wait()
+                        for tag in tags
+                    ]
+                )
 
     @property
     def _check_command(self) -> tuple[str, ...]:
