@@ -66,6 +66,14 @@ class Image(BaseModel):
 
             await docker_build.wait()
 
+            check = await stack.enter_async_context(
+                _create2open(create_subprocess_exec)(
+                    "docker", "run", tags[0], *self._check_command
+                )
+            )
+            if await check.wait():
+                return
+
     @property
     def _check_command(self) -> tuple[str, ...]:
         script = f"""\
