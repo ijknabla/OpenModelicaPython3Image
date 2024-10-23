@@ -85,18 +85,30 @@ async def _post_build(
     if check or push:
         script = f"""\
 import sys
-assert sys.version.startswith("{image.py!s}")
 from logging import *
 from omc4py import *
+from pathlib import *
+
+assert sys.version.startswith("{image.py!s}"), "Check Python version"
+
 logger=getLogger("omc4py")
 logger.addHandler(StreamHandler())
 logger.setLevel(DEBUG)
 s=open_session()
-assert s.getVersion().startswith(f"v{image.om!s}")
-assert s.installPackage("Modelica")
-s.simulate("Modelica.Blocks.Examples.PID_Controller")
-s.__check__()
-"""
+
+version = s.getVersion(); s.__check__()
+assert version.startswith(f"v{image.om!s}"), "Check OpenModelica version"
+
+installed = s.installPackage("Modelica"); s.__check__()
+assert installed, "Install Modelica package"
+
+loaded = s.loadModel("Modelica"); s.__check__()
+assert loaded, "Load Modelica package"
+
+result = s.simulate("Modelica.Blocks.Examples.PID_Controller"); s.__check__()
+assert "The simulation finished successfully." in result.messages, "Check simulation result"
+assert Path(result.resultFile).exists(), "Check simulation output"
+"""  # noqa: E501
         cmd: tuple[str, ...] = (
             "docker",
             "run",
