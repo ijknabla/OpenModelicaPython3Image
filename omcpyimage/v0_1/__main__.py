@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asyncio import gather, run
-from asyncio.subprocess import PIPE, create_subprocess_exec
+from asyncio.subprocess import create_subprocess_exec
 from collections import defaultdict
 from functools import wraps
 from importlib.resources import read_binary
@@ -49,28 +49,7 @@ async def build(
     dockerfile = read_binary(__package__, "Dockerfile")
 
     for im in image:
-        cmd = (
-            "docker",
-            "build",
-            *im.docker_build_arg,
-            "-",
-            "--target=final",
-            "--tag",
-            ",".join(tags[im]),
-        )
-        docker_build = await create_subprocess_exec(
-            *cmd,
-            stdin=PIPE,
-        )
-        if docker_build.stdin is None:
-            raise RuntimeError
-
-        docker_build.stdin.write(dockerfile)
-        docker_build.stdin.write_eof()
-
-        returncode = await docker_build.wait()
-        if returncode:
-            raise CalledProcessError(returncode=returncode, cmd=cmd)
+        await im.deploy(dockerfile, tags[im])
 
     print("=" * 72)
     for _, tt in sorted(tags.items(), key=lambda kv: kv[0].as_tuple):
