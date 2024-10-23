@@ -68,7 +68,7 @@ async def build(
     ]
     tags = defaultdict[Stage, list[str]](lambda: [])
     for s in stage:
-        tags[s].append(f"ijknabla:openmodelicav{s.om!s}-python{s.py!s}")
+        tags[s].append(f"ijknabla/openmodelica:v{s.om!s}-python{s.py!s}")
 
     naming_to_image = re.compile(r"naming to (?P<image>\S+)")
     image = list[str]()
