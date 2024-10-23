@@ -11,7 +11,7 @@ from typing import IO, TYPE_CHECKING
 
 import click
 
-from . import Stage, Version, format_dockerfile
+from . import Image, Version, format_dockerfile
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -37,7 +37,7 @@ def dockerfile(
     print(f"{openmodelica=!r}", file=sys.stderr)
     print(f"{python=!r}", file=sys.stderr)
     stage = [
-        Stage(om=om, py=py)
+        Image(om=om, py=py)
         for om, py in product(
             sorted(set(openmodelica), key=lambda x: x.tuple),
             sorted(set(python), key=lambda x: x.tuple),
@@ -58,16 +58,16 @@ async def build(
     check: bool,
     push: bool,
 ) -> None:
-    stage = [
-        Stage(om=om, py=py)
+    image = [
+        Image(om=om, py=py)
         for om, py in product(
             sorted(set(openmodelica), key=lambda x: x.tuple),
             sorted(set(python), key=lambda x: x.tuple),
         )
     ]
-    tags = defaultdict[Stage, list[str]](lambda: [])
-    for s in stage:
-        tags[s].append(f"ijknabla/openmodelica:v{s.om!s}-python{s.py!s}")
+    tags = defaultdict[Image, list[str]](lambda: [])
+    for im in image:
+        tags[im].append(f"ijknabla/openmodelica:v{im.om!s}-python{im.py!s}")
 
     docker_build_cmd = (
         "docker",
@@ -86,7 +86,7 @@ async def build(
     if docker_build.stdin is None or docker_build.stderr is None:
         raise RuntimeError
 
-    docker_build.stdin.write(format_dockerfile(stage).encode("utf-8"))
+    docker_build.stdin.write(format_dockerfile(image).encode("utf-8"))
     docker_build.stdin.write_eof()
 
     async for _line in docker_build.stderr:
@@ -108,19 +108,19 @@ async def build(
 
 
 async def _post_build(
-    stage: Stage, tags: Sequence[str], *, check: bool, push: bool
+    image: Image, tags: Sequence[str], *, check: bool, push: bool
 ) -> None:
     if check or push:
         script = f"""\
 import sys
-assert sys.version.startswith("{stage.py!s}")
+assert sys.version.startswith("{image.py!s}")
 from logging import *
 from omc4py import *
 logger=getLogger("omc4py")
 logger.addHandler(StreamHandler())
 logger.setLevel(DEBUG)
 s=open_session()
-assert s.getVersion().startswith(f"v{stage.om!s}")
+assert s.getVersion().startswith(f"v{image.om!s}")
 assert s.installPackage("Modelica")
 s.simulate("Modelica.Blocks.Examples.PID_Controller")
 s.__check__()

@@ -13,20 +13,20 @@ if TYPE_CHECKING:
 
 
 def format_dockerfile(
-    stage: Sequence[Stage],
+    image: Sequence[Image],
 ) -> str:
-    openmodelica = sorted({s.om for s in stage}, key=lambda x: x.tuple)
-    python = sorted({s.py for s in stage}, key=lambda x: x.tuple)
+    openmodelica = sorted({im.om for im in image}, key=lambda x: x.tuple)
+    python = sorted({im.py for im in image}, key=lambda x: x.tuple)
     return "\n\n".join(
         chain(
             (_format_openmodelica_stage(om) for om in openmodelica),
             (_format_python_stage(py) for py in python),
-            (_format_final_stage(s) for s in stage),
+            (_format_final_stage(im) for im in image),
         )
     )
 
 
-class Stage(BaseModel):
+class Image(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     om: OMVersion
@@ -104,5 +104,5 @@ def _format_python_stage(version: PyVersion) -> str:
     return read_text(__package__, "PythonStage.in").format(version=version)
 
 
-def _format_final_stage(stage: Stage) -> str:
-    return read_text(__package__, "FinalStage.in").format(stage=stage)
+def _format_final_stage(image: Image) -> str:
+    return read_text(__package__, "FinalStage.in").format(stage=image)
