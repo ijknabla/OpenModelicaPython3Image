@@ -56,8 +56,7 @@ class Image(BaseModel):
                     *self.docker_build_arg,
                     "-",
                     "--target=final",
-                    "--tag",
-                    ",".join(tags),
+                    *(f"--tag={tag}" for tag in tags),
                     stdin=PIPE,
                 )
             )
