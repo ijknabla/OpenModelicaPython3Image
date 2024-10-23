@@ -90,10 +90,12 @@ RUN \
     libssl3 zlib1g \
     libbz2-1.0 libreadline8 libsqlite3-0 git \
     libncursesw6 tk libxml2 libxmlsec1 libffi8 liblzma5 \
-    && update-alternatives --install /usr/bin/2to3   2to3   /usr/bin/2to3-${PY_SHORT_VERSION}  10 \
-    && update-alternatives --install /usr/bin/idle   idle   /usr/bin/idle${PY_SHORT_VERSION}   10 \
-    && update-alternatives --install /usr/bin/pip    pip    /usr/bin/pip${PY_SHORT_VERSION}    10 \
-    && update-alternatives --install /usr/bin/pydoc  pydoc  /usr/bin/pydoc${PY_SHORT_VERSION}  10 \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python${PY_SHORT_VERSION} 10 \
+    && if which 2to3-${PY_SHORT_VERSION} > /dev/null; \
+        then update-alternatives --install /usr/bin/2to3   2to3   /usr/bin/2to3-${PY_SHORT_VERSION}  10; fi \
+    &&       update-alternatives --install /usr/bin/idle   idle   /usr/bin/idle${PY_SHORT_VERSION}   10  \
+    &&       update-alternatives --install /usr/bin/pip    pip    /usr/bin/pip${PY_SHORT_VERSION}    10  \
+    &&       update-alternatives --install /usr/bin/pydoc  pydoc  /usr/bin/pydoc${PY_SHORT_VERSION}  10  \
+    &&       update-alternatives --install /usr/bin/python python /usr/bin/python${PY_SHORT_VERSION} 10  \
+    && ln -s / /artifact \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=openmodelica /artifact/usr/ /usr/
