@@ -24,13 +24,11 @@ def main() -> None: ...
 @main.command()
 @click.option("--openmodelica", "--om", multiple=True, type=Version.parse)
 @click.option("--python", "--py", multiple=True, type=Version.parse)
-@click.option("--check/--no-check", default=False)
 @click.option("--push/--no-push", default=False)
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
 async def build(
     openmodelica: Sequence[OMVersion],
     python: Sequence[PyVersion],
-    check: bool,
     push: bool,
 ) -> None:
     image = [
