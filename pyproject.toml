@@ -61,6 +61,13 @@ disable_error_code = [
     "no-untyped-call",
     "no-untyped-def",
 ]
+[[tool.mypy.overrides]]
+module = [
+    "omcpyimage.*.widget.*"
+]
+disable_error_code = [
+    "no-untyped-call",
+]
 
 [tool.ruff]
 extend-exclude = ["omcpyimage/ui/*.py"]
