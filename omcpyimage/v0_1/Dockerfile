@@ -23,15 +23,16 @@ RUN \
     libcurl4-openssl-dev uuid-dev libexpat1-dev \
     libblas-dev liblapack-dev \
     && git clone --recursive -b v${VERSION} https://github.com/OpenModelica/OpenModelica.git source \
-    && find source/OMCompiler/ -name '*.mo' | xargs sed -i 's/System\.userIsRoot()/false/g' \
-    && cmake -S source -B build \
+    && find /source/OMCompiler -name '*.mo' | xargs sed -i 's/System\.userIsRoot()/false/g' \
+    && find /source/OMCompiler -name CMakeLists.txt | xargs sed -i 's/https:\/\/build.openmodelica.org\/omc\/bootstrap/https:\/\/build.openmodelica.org\/old\/bootstrap/g' \
+    && cmake -S /source -B /build \
     -DOM_USE_CCACHE=OFF -DCMAKE_BUILD_TYPE=MinSizeRel \
     -DCMAKE_Fortran_COMPILER=gfortran-11 \
     -DOM_ENABLE_GUI_CLIENTS=OFF -DOM_OMC_ENABLE_CPP_RUNTIME=OFF \
     -DCMINPACK_BUILD_SHARED_LIBS=ON \
     -DCMAKE_INSTALL_PREFIX=/artifact/usr/ \
-    && make -C build -j4 install \
-    && rm -rf source build \
+    && make -C /build -j4 install \
+    && rm -rf /source /build \
     && apt purge -y \
     git ca-certificates \
     autoconf cmake make \
