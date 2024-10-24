@@ -5,11 +5,14 @@ from collections import defaultdict
 from functools import wraps
 from importlib.resources import read_binary
 from itertools import product
+from sys import exit
 from typing import TYPE_CHECKING
 
 import click
+from PySide6.QtWidgets import QApplication
 
 from . import Image, Version
+from .widget.mainwindow import MainWindow
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -19,6 +22,16 @@ if TYPE_CHECKING:
 
 @click.group()
 def main() -> None: ...
+
+
+@main.command()
+def gui() -> None:
+    app = QApplication()
+
+    main_window = MainWindow()
+    main_window.show()
+
+    exit(app.exec())
 
 
 @main.command()
