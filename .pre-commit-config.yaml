@@ -46,4 +46,4 @@ repos:
         -   .pre-commit/uic.py
         -   --src=src
         -   --dst=omcpyimage
-        files: src/ui/.*\.ui
+        files: src/.*\.ui
