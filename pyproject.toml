@@ -55,7 +55,7 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    "omcpyimage.ui.*"
+    "omcpyimage.*.ui.*"
 ]
 disable_error_code = [
     "no-untyped-call",
