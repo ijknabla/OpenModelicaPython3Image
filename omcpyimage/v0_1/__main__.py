@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from asyncio import gather, run
 from collections import defaultdict
+from contextlib import ExitStack
 from functools import wraps
 from importlib.resources import read_binary
 from itertools import product
@@ -12,6 +13,7 @@ import click
 from PySide6.QtWidgets import QApplication
 
 from . import Image, Version
+from .model import Application, findversion, open_model
 from .widget.mainwindow import MainWindow
 
 if TYPE_CHECKING:
@@ -26,12 +28,24 @@ def main() -> None: ...
 
 @main.command()
 def gui() -> None:
-    app = QApplication()
+    with ExitStack() as stack:
+        app = QApplication()
 
-    main_window = MainWindow()
-    main_window.show()
+        main_window = MainWindow()
+        model = stack.enter_context(open_model(main_window))
 
-    exit(app.exec())
+        main_window.show()
+
+        model.findversion_response.connect(print)
+
+        model.findversion_request.emit(
+            findversion.Request(application=Application.openmodelica)
+        )
+        model.findversion_request.emit(
+            findversion.Request(application=Application.python)
+        )
+
+        exit(app.exec())
 
 
 @main.command()
