@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from asyncio import create_subprocess_exec
+from collections import defaultdict
 from collections.abc import AsyncIterator
 from importlib.resources import as_file, files
 from pathlib import Path, PurePosixPath
@@ -18,14 +19,18 @@ class Request(BaseModel):
     application: Application
 
     async def reply(self) -> AsyncIterator[Response]:
+        category = defaultdict[Version, list[Version]](lambda: [])
         async for tag in self.iter_tags():
             match re.match(r"^v(?P<version>\d+\.\d+\.\d+)$", tag):
                 case None:
                     continue
                 case matched:
                     version = Version.model_validate(matched.group("version"))
+                    category[version.short].append(version)
 
-            yield Response(application=self.application, version=version)
+        for k, v in category.items():
+            yield Response(application=self.application, version=max(v))
+
         yield Response(application=self.application, version=None)
 
     async def iter_tags(self) -> AsyncIterator[str]:
