@@ -6,7 +6,7 @@ from enum import Enum, auto
 from functools import total_ordering
 from typing import Any, Self
 
-from pydantic import NonNegativeInt, RootModel, model_validator
+from pydantic import ConfigDict, NonNegativeInt, RootModel, model_validator
 
 
 @total_ordering
@@ -27,6 +27,8 @@ unset = Unset.unset
 class Version(
     RootModel[tuple[NonNegativeInt, NonNegativeInt | Unset, NonNegativeInt | Unset]]
 ):
+    model_config = ConfigDict(frozen=True)
+
     def __str__(self) -> str:
         def item() -> Iterator[str]:
             for i in self.root:
@@ -39,6 +41,22 @@ class Version(
 
     def __lt__(self, other: Self, /) -> bool:
         return self.root < other.root
+
+    @property
+    def major(self) -> int:
+        return self.root[0]
+
+    @property
+    def minor(self) -> int | Unset:
+        return self.root[1]
+
+    @property
+    def patch(self) -> int | Unset:
+        return self.root[2]
+
+    @property
+    def short(self) -> Self:
+        return type(self).model_validate(self.root[:2])
 
     @model_validator(mode="before")  # type: ignore [arg-type]
     @staticmethod
