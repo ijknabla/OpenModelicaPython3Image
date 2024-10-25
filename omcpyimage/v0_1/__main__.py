@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from . import Image
-from .version import Version
+from . import Image, Version
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
