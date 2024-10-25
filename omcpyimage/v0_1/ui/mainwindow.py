@@ -15,8 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QMainWindow, QMenuBar, QSizePolicy,
-    QStatusBar, QWidget)
+from PySide6.QtWidgets import (QApplication, QHeaderView, QMainWindow, QMenuBar,
+    QSizePolicy, QStatusBar, QTreeWidget, QTreeWidgetItem,
+    QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -25,6 +26,13 @@ class Ui_MainWindow(object):
         MainWindow.resize(800, 600)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
+        self.verticalLayout = QVBoxLayout(self.centralwidget)
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.treeWidget = QTreeWidget(self.centralwidget)
+        self.treeWidget.setObjectName(u"treeWidget")
+
+        self.verticalLayout.addWidget(self.treeWidget)
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
@@ -41,5 +49,13 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        ___qtreewidgetitem = self.treeWidget.headerItem()
+        ___qtreewidgetitem.setText(6, QCoreApplication.translate("MainWindow", u"tag", None));
+        ___qtreewidgetitem.setText(5, QCoreApplication.translate("MainWindow", u"push", None));
+        ___qtreewidgetitem.setText(4, QCoreApplication.translate("MainWindow", u"test", None));
+        ___qtreewidgetitem.setText(3, QCoreApplication.translate("MainWindow", u"build", None));
+        ___qtreewidgetitem.setText(2, QCoreApplication.translate("MainWindow", u"pull", None));
+        ___qtreewidgetitem.setText(1, QCoreApplication.translate("MainWindow", u"python", None));
+        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindow", u"openmodelica", None));
     # retranslateUi
 
