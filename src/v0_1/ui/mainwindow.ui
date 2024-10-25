@@ -52,6 +52,14 @@
         <string>tag</string>
        </property>
       </column>
+      <item>
+       <property name="text">
+        <string>-</string>
+       </property>
+       <property name="text">
+        <string>-</string>
+       </property>
+      </item>
      </widget>
     </item>
    </layout>
