@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ("Application", "findversion", "open_model")
+
 import logging
 from asyncio import (
     FIRST_COMPLETED,
@@ -22,6 +24,8 @@ from typing import Any, Protocol
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Slot
 
 from ..annotation import Signal, SignalInstance
+from . import findversion
+from .constant import Application
 
 logger = logging.getLogger(__name__)
 
@@ -96,10 +100,19 @@ class ConnectionAgent(QObject):
 
 
 class Model(QObject):
+    findversion_request = Signal(findversion.Request)
+    findversion_response = Signal(findversion.Response)
+
     def setAgent(self, agent: ConnectionAgent) -> None:
         agent.recv.connect(self._on_recv)
 
-    def _on_recv(self, response: Any) -> None: ...
+        self.findversion_request.connect(agent.send.emit)
+
+    def _on_recv(self, response: Any) -> None:
+        if isinstance(response, findversion.Response):
+            self.findversion_response.emit(response)
+        else:
+            raise NotImplementedError(response)
 
 
 @(lambda f: wraps(f)(lambda *args, **kwargs: run(f(*args, **kwargs))))
