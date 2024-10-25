@@ -3,12 +3,14 @@ from __future__ import annotations
 import re
 from asyncio import gather
 from asyncio.subprocess import PIPE, Process, create_subprocess_exec
+from collections.abc import Iterator
 from contextlib import AsyncExitStack, asynccontextmanager
-from functools import wraps
+from enum import Enum, auto
+from functools import total_ordering, wraps
 from subprocess import CalledProcessError
-from typing import TYPE_CHECKING, NewType, ParamSpec
+from typing import TYPE_CHECKING, Any, NewType, ParamSpec, Self
 
-from pydantic import BaseModel, ConfigDict, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, NonNegativeInt, RootModel, model_validator
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
@@ -18,15 +20,15 @@ if TYPE_CHECKING:
 P = ParamSpec("P")
 
 
+@total_ordering
 class Image(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     om: OMVersion
     py: PyVersion
 
-    @property
-    def as_tuple(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-        return self.om.as_tuple, self.py.as_tuple
+    def __lt__(self, other: Self) -> bool:
+        return self.om < other.om or self.py < other.py
 
     @property
     def docker_build_arg(self) -> tuple[str, ...]:
@@ -131,59 +133,83 @@ OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")
 
 
-class Version(BaseModel):
+@total_ordering
+class Unset(Enum):
+    unset = auto()
+
+    def __lt__(self, other: Unset | int, /) -> bool:
+        if isinstance(other, int):
+            return True
+        else:
+            return False
+
+
+unset = Unset.unset
+
+
+@total_ordering
+class Version(
+    RootModel[tuple[NonNegativeInt, NonNegativeInt | Unset, NonNegativeInt | Unset]]
+):
     model_config = ConfigDict(frozen=True)
 
-    major: StrictInt
-    minor: StrictInt
-    patch: StrictInt
-
-    @classmethod
-    def parse(cls, s: str, /, *, strict: bool = True) -> Self:
-        pattern = r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
-        if strict:
-            matched = re.match(rf"^{pattern}$", s)
-        else:
-            matched = re.search(pattern, s)
-        if matched is None:
-            raise ValueError(s)
-        return cls(
-            major=int(matched.group("major")),
-            minor=int(matched.group("minor")),
-            patch=int(matched.group("patch")),
-        )
-
-    @property
-    def short(self) -> ShortVersion:
-        return ShortVersion(major=self.major, minor=self.minor)
-
-    @property
-    def as_tuple(self) -> tuple[int, int, int]:
-        return self.major, self.minor, self.patch
-
     def __str__(self) -> str:
-        return ".".join(map(str, self.as_tuple))
+        def item() -> Iterator[str]:
+            for i in self.root:
+                if i is unset:
+                    yield ""
+                else:
+                    yield f".{i}"
+
+        return "".join(item())[1:]
+
+    def __lt__(self, other: Self, /) -> bool:
+        return self.root < other.root
+
+    @property
+    def major(self) -> int:
+        return self.root[0]
+
+    @property
+    def minor(self) -> int | Unset:
+        return self.root[1]
+
+    @property
+    def patch(self) -> int | Unset:
+        return self.root[2]
+
+    @property
+    def short(self) -> Self:
+        return type(self).model_validate(self.root[:2])
 
     @model_validator(mode="before")  # type: ignore [arg-type]
-    @classmethod
-    def _model_validate(cls, obj: Any, /) -> Any:
-        if isinstance(obj, str):
-            return cls.parse(obj, strict=True).model_dump()
-        return obj
+    @staticmethod
+    def _model_validator(root: Any) -> None:
+        if isinstance(root, str):
+            target = re.compile(r"(?P<major>\d+)(\.(?P<minor>\d+)(\.(?P<patch>\d+))?)?")
+            match target.match(root):
+                case None:
+                    ValueError(f"{root!r} does not match {target.pattern!r}")
+                case matched:
+                    root = tuple(
+                        int(s)
+                        for s in (
+                            matched.group("major"),
+                            matched.group("minor"),
+                            matched.group("patch"),
+                        )
+                        if s is not None
+                    )
 
-
-class ShortVersion(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    major: StrictInt
-    minor: StrictInt
-
-    @property
-    def as_tuple(self) -> tuple[int, int]:
-        return self.major, self.minor
-
-    def __str__(self) -> str:
-        return ".".join(map(str, self.as_tuple))
+        match root:
+            case (major,) | (major, None, None):
+                return major, unset, unset
+            case (major, minor) | (major, minor, None):
+                return major, minor, unset
+            case (major, minor, patch):
+                return major, minor, patch
+            case _:
+                raise NotImplementedError(root)
 
 
 def _create2open(
