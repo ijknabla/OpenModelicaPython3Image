@@ -30,10 +30,10 @@ class Request(BaseModel):
                     if self.minimum <= version:
                         category[version.short].append(version)
 
-        for k, v in category.items():
-            yield Response(application=self.application, version=max(v))
-
-        yield Response(application=self.application, version=None)
+        yield Response(
+            application=self.application,
+            version=[max(v) for _, v in sorted(category.items())],
+        )
 
     async def iter_tags(self) -> AsyncIterator[str]:
         git_clone = await create_subprocess_exec(
@@ -73,4 +73,4 @@ class Request(BaseModel):
 
 class Response(BaseModel):
     application: Application
-    version: Version | None
+    version: list[Version]
