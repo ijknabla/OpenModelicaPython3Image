@@ -27,7 +27,16 @@ def main() -> None: ...
 
 
 @main.command()
-def gui() -> None:
+@click.option(
+    "--om-minimum", type=Version.model_validate, default=Version.model_validate((0,))
+)
+@click.option(
+    "--py-minimum", type=Version.model_validate, default=Version.model_validate((0,))
+)
+def gui(
+    om_minimum: Version,
+    py_minimum: Version,
+) -> None:
     with ExitStack() as stack:
         app = QApplication()
 
@@ -39,10 +48,12 @@ def gui() -> None:
         model.findversion_response.connect(print)
 
         model.findversion_request.emit(
-            findversion.Request(application=Application.openmodelica)
+            findversion.Request(
+                application=Application.openmodelica, minimum=om_minimum
+            )
         )
         model.findversion_request.emit(
-            findversion.Request(application=Application.python)
+            findversion.Request(application=Application.python, minimum=py_minimum)
         )
 
         exit(app.exec())

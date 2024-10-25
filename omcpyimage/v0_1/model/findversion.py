@@ -17,6 +17,7 @@ from .constant import Application
 
 class Request(BaseModel):
     application: Application
+    minimum: Version
 
     async def reply(self) -> AsyncIterator[Response]:
         category = defaultdict[Version, list[Version]](lambda: [])
@@ -26,7 +27,8 @@ class Request(BaseModel):
                     continue
                 case matched:
                     version = Version.model_validate(matched.group("version"))
-                    category[version.short].append(version)
+                    if self.minimum <= version:
+                        category[version.short].append(version)
 
         for k, v in category.items():
             yield Response(application=self.application, version=max(v))

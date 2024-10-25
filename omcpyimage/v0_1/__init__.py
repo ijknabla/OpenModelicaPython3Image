@@ -166,6 +166,10 @@ class Version(
     def __lt__(self, other: Self, /) -> bool:
         return self.root < other.root
 
+    if TYPE_CHECKING:
+
+        def __le__(self, other: Self, /) -> bool: ...
+
     @property
     def major(self) -> int:
         return self.root[0]
