@@ -42,10 +42,9 @@ def gui(
 
         main_window = MainWindow()
         model = stack.enter_context(open_model(main_window))
+        main_window.setModel(model)
 
         main_window.show()
-
-        model.findversion_response.connect(print)
 
         model.findversion_request.emit(
             findversion.Request(

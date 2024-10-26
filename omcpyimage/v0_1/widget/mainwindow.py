@@ -1,6 +1,9 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QWidget
+from collections.abc import Iterator
 
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
+
+from ..model import Application, Model, findversion
 from ..ui.mainwindow import Ui_MainWindow
 
 
@@ -12,3 +15,44 @@ class MainWindow(QMainWindow):
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+    def setModel(self, model: Model) -> None:
+        model.findversion_response.connect(self.update_version)
+
+    def update_version(self, response: findversion.Response) -> None:
+        oposite = {
+            Application.openmodelica: Application.python,
+            Application.python: Application.openmodelica,
+        }[response.application]
+
+        def _iter_items() -> Iterator[QTreeWidgetItem]:
+            for i in range(self.ui.treeWidget.topLevelItemCount()):
+                item = self.ui.treeWidget.topLevelItem(i)
+                oposite_text = item.text(self.columnIndex(oposite))
+
+                for version in response.version:
+                    new_item = QTreeWidgetItem()
+                    new_item.setText(
+                        self.columnIndex(response.application), f"v{version}"
+                    )
+                    new_item.setText(self.columnIndex(oposite), oposite_text)
+
+                    yield new_item
+
+        items = list(_iter_items())
+        self.ui.treeWidget.clear()
+        self.ui.treeWidget.addTopLevelItems(items)
+
+    def columnIndex(self, kind: Application) -> int:
+        header = self.ui.treeWidget.headerItem()
+        for i in range(header.columnCount()):
+            match header.text(i):
+                case "openmodelica":
+                    _kind = Application.openmodelica
+                case "python":
+                    _kind = Application.python
+
+            if _kind == kind:
+                return i
+
+        raise NotImplementedError(kind)
