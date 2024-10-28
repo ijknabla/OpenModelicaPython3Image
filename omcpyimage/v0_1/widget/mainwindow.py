@@ -27,8 +27,9 @@ class MainWindow(QMainWindow):
         self._newTopLevelItem(frozendict[Application, Version]())
 
     def setModel(self, model: Model) -> None:
-        model.findversion_response.connect(self.update_version)
         self.docker_request.connect(model.docker_request)
+        model.docker_response.connect(self.update_progress)
+        model.findversion_response.connect(self.update_version)
 
     def update_version(self, response: findversion.Response) -> None:
         images = {
@@ -77,7 +78,8 @@ class MainWindow(QMainWindow):
             if self.ui.treeWidget.topLevelItem(i) is item:
                 self.ui.treeWidget.takeTopLevelItem(i)
 
-    def columnIndex(self, kind: Application) -> int:
+    def columnIndex(self, kind: Application | docker.Stage) -> int:
+        _kind: Application | docker.Stage
         header = self.ui.treeWidget.headerItem()
         for i in range(header.columnCount()):
             match header.text(i):
@@ -85,8 +87,24 @@ class MainWindow(QMainWindow):
                     _kind = Application.openmodelica
                 case "python":
                     _kind = Application.python
+                case "build":
+                    _kind = docker.Stage.build
+                case "test":
+                    _kind = docker.Stage.test
+                case "push":
+                    _kind = docker.Stage.push
 
             if _kind == kind:
                 return i
 
         raise NotImplementedError(kind)
+
+    def update_progress(self, response: docker.Response, /) -> None:
+        if response.returncode is None:
+            text = "running..."
+        else:
+            text = f"{response.returncode}"
+
+        self._topLevelItems[response.version].setText(
+            self.columnIndex(response.stage), text
+        )

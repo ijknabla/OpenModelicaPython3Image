@@ -32,7 +32,7 @@ class Request(BaseModel):
                 f"ijknabla/openmodelica:v{om.short!s}-python{py.short!s}",
             ]
 
-            yield Response(stage=Stage.build, state=State.begin)
+            yield Response(version=self.version, stage=Stage.build, state=State.begin)
             docker_build = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(
                     "docker",
@@ -64,10 +64,13 @@ class Request(BaseModel):
             docker_build.stdin.write_eof()
 
             yield Response(
-                stage=Stage.build, state=State.end, returncode=await docker_build.wait()
+                version=self.version,
+                stage=Stage.build,
+                state=State.end,
+                returncode=await docker_build.wait(),
             )
 
-            yield Response(stage=Stage.check, state=State.begin)
+            yield Response(version=self.version, stage=Stage.test, state=State.begin)
             check = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(
                     "docker", "run", tags[0], *_check_command(om=om, py=py)
@@ -75,11 +78,16 @@ class Request(BaseModel):
             )
 
             yield Response(
-                stage=Stage.check, state=State.end, returncode=await check.wait()
+                version=self.version,
+                stage=Stage.test,
+                state=State.end,
+                returncode=await check.wait(),
             )
 
             if self.push:
-                yield Response(stage=Stage.push, state=State.begin)
+                yield Response(
+                    version=self.version, stage=Stage.push, state=State.begin
+                )
                 returncode = await gather(
                     *[
                         (
@@ -93,6 +101,7 @@ class Request(BaseModel):
                     ]
                 )
                 yield Response(
+                    version=self.version,
                     stage=Stage.push,
                     state=State.end,
                     returncode=reduce(or_, returncode, 0),
@@ -101,7 +110,7 @@ class Request(BaseModel):
 
 class Stage(Enum):
     build = auto()
-    check = auto()
+    test = auto()
     push = auto()
 
 
@@ -112,6 +121,9 @@ class State(Enum):
 
 
 class Response(BaseModel):
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+
+    version: frozendict[Application, Version]
     stage: Stage
     state: State
     returncode: int | None = None
