@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from asyncio import gather
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack
@@ -16,6 +17,7 @@ class Request(BaseModel):
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     version: frozendict[Application, Version]
+    push: bool
 
     async def reply(self) -> AsyncIterator[Response]:
         async with AsyncExitStack() as stack:
@@ -66,6 +68,20 @@ class Request(BaseModel):
             )
 
             await check.wait()
+
+            if self.push:
+                await gather(
+                    *[
+                        (
+                            await stack.enter_async_context(
+                                _create2open(create_subprocess_exec)(
+                                    "docker", "push", tag
+                                )
+                            )
+                        ).wait()
+                        for tag in tags
+                    ]
+                )
 
         yield Response()
 

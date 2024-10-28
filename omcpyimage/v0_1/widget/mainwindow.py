@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         ):
             callback(image)
             if image in create and image.keys() == set(Application):
-                self.docker_request.emit(docker.Request(version=image))
+                self.docker_request.emit(docker.Request(version=image, push=True))
 
         return
 
