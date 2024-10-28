@@ -29,7 +29,6 @@ class Ui_MainWindow(object):
         self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.treeWidget = QTreeWidget(self.centralwidget)
-        QTreeWidgetItem(self.treeWidget)
         self.treeWidget.setObjectName(u"treeWidget")
 
         self.verticalLayout.addWidget(self.treeWidget)
@@ -58,13 +57,5 @@ class Ui_MainWindow(object):
         ___qtreewidgetitem.setText(2, QCoreApplication.translate("MainWindow", u"pull", None));
         ___qtreewidgetitem.setText(1, QCoreApplication.translate("MainWindow", u"python", None));
         ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindow", u"openmodelica", None));
-
-        __sortingEnabled = self.treeWidget.isSortingEnabled()
-        self.treeWidget.setSortingEnabled(False)
-        ___qtreewidgetitem1 = self.treeWidget.topLevelItem(0)
-        ___qtreewidgetitem1.setText(1, QCoreApplication.translate("MainWindow", u"-", None));
-        ___qtreewidgetitem1.setText(0, QCoreApplication.translate("MainWindow", u"-", None));
-        self.treeWidget.setSortingEnabled(__sortingEnabled)
-
     # retranslateUi
 

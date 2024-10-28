@@ -1,5 +1,7 @@
 from collections.abc import Iterator, Mapping
 
+from bidict import bidict
+from frozendict import frozendict
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
@@ -16,6 +18,12 @@ class MainWindow(QMainWindow):
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        __default_image = frozendict[Application, Version]()
+
+        self.topLevelItems = bidict(
+            {__default_image: self.addTopLevelItem(__default_image)}
+        )
 
     def setModel(self, model: Model) -> None:
         model.findversion_response.connect(self.update_version)
