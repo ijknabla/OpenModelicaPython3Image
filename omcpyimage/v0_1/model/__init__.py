@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ("Application", "findversion", "open_model")
+__all__ = ("Application", "docker", "findversion", "open_model")
 
 import logging
 from asyncio import (
@@ -24,7 +24,7 @@ from typing import Any, Protocol
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Slot
 
 from ..annotation import Signal, SignalInstance
-from . import findversion
+from . import docker, findversion
 from .constant import Application
 
 logger = logging.getLogger(__name__)
@@ -100,17 +100,23 @@ class ConnectionAgent(QObject):
 
 
 class Model(QObject):
+    docker_request = Signal(docker.Request)
+    docker_response = Signal(docker.Response)
+
     findversion_request = Signal(findversion.Request)
     findversion_response = Signal(findversion.Response)
 
     def setAgent(self, agent: ConnectionAgent) -> None:
         agent.recv.connect(self._on_recv)
 
+        self.docker_request.connect(agent.send.emit)
         self.findversion_request.connect(agent.send.emit)
 
     def _on_recv(self, response: Any) -> None:
         if isinstance(response, findversion.Response):
             self.findversion_response.emit(response)
+        if isinstance(response, docker.Response):
+            self.docker_response.emit(response)
         else:
             raise NotImplementedError(response)
 

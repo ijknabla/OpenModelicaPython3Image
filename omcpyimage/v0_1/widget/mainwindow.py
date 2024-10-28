@@ -2,15 +2,17 @@ from itertools import chain
 
 from bidict import bidict
 from frozendict import frozendict
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
 from .. import Version
-from ..model import Application, Model, findversion
+from ..model import Application, Model, docker, findversion
 from ..ui.mainwindow import Ui_MainWindow
 
 
 class MainWindow(QMainWindow):
+    docker_request = Signal(docker.Request)
+
     def __init__(
         self, parent: QWidget | None = None, flags: Qt.WindowType | None = None
     ) -> None:
@@ -26,6 +28,7 @@ class MainWindow(QMainWindow):
 
     def setModel(self, model: Model) -> None:
         model.findversion_response.connect(self.update_version)
+        self.docker_request.connect(model.docker_request)
 
     def update_version(self, response: findversion.Response) -> None:
         images = {
@@ -38,14 +41,16 @@ class MainWindow(QMainWindow):
         remove = self._topLevelItems.keys() - images
         create = images - self._topLevelItems.keys()
 
-        for f, x in sorted(
+        for callback, image in sorted(
             chain(
                 ((self._deleteTopLevelItem, im) for im in remove),
                 ((self._newTopLevelItem, im) for im in create),
             ),
             key=lambda fx: tuple(fx[1].get(app, null) for app in Application),
         ):
-            f(x)
+            callback(image)
+            if image in create and image.keys() == set(Application):
+                self.docker_request.emit(docker.Request(version=image))
 
         return
 
