@@ -1,8 +1,9 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QTreeWidgetItem, QWidget
 
+from .. import Version
 from ..model import Application, Model, findversion
 from ..ui.mainwindow import Ui_MainWindow
 
@@ -42,6 +43,19 @@ class MainWindow(QMainWindow):
         items = list(_iter_items())
         self.ui.treeWidget.clear()
         self.ui.treeWidget.addTopLevelItems(items)
+
+    def addTopLevelItem(self, image: Mapping[Application, Version]) -> QTreeWidgetItem:
+        item = QTreeWidgetItem()
+
+        for app in Application:
+            version = image.get(app)
+            item.setText(
+                self.columnIndex(app), f"v{version}" if version is not None else "-"
+            )
+
+        self.ui.treeWidget.addTopLevelItem(item)
+
+        return item
 
     def columnIndex(self, kind: Application) -> int:
         header = self.ui.treeWidget.headerItem()
