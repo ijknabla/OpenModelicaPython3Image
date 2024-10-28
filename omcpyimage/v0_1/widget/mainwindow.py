@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from itertools import chain
 
 from bidict import bidict
 from frozendict import frozendict
@@ -28,28 +28,26 @@ class MainWindow(QMainWindow):
         model.findversion_response.connect(self.update_version)
 
     def update_version(self, response: findversion.Response) -> None:
-        oposite = {
-            Application.openmodelica: Application.python,
-            Application.python: Application.openmodelica,
-        }[response.application]
+        images = {
+            im | {response.application: v}
+            for im in self._topLevelItems
+            for v in response.version
+        }
 
-        def _iter_items() -> Iterator[QTreeWidgetItem]:
-            for i in range(self.ui.treeWidget.topLevelItemCount()):
-                item = self.ui.treeWidget.topLevelItem(i)
-                oposite_text = item.text(self.columnIndex(oposite))
+        null = Version.model_validate((0,))
+        remove = self._topLevelItems.keys() - images
+        create = images - self._topLevelItems.keys()
 
-                for version in response.version:
-                    new_item = QTreeWidgetItem()
-                    new_item.setText(
-                        self.columnIndex(response.application), f"v{version}"
-                    )
-                    new_item.setText(self.columnIndex(oposite), oposite_text)
+        for f, x in sorted(
+            chain(
+                ((self._deleteTopLevelItem, im) for im in remove),
+                ((self._newTopLevelItem, im) for im in create),
+            ),
+            key=lambda fx: tuple(fx[1].get(app, null) for app in Application),
+        ):
+            f(x)
 
-                    yield new_item
-
-        items = list(_iter_items())
-        self.ui.treeWidget.clear()
-        self.ui.treeWidget.addTopLevelItems(items)
+        return
 
     def _newTopLevelItem(
         self, image: frozendict[Application, Version]
@@ -66,6 +64,13 @@ class MainWindow(QMainWindow):
         self._topLevelItems[image] = item
 
         return item
+
+    def _deleteTopLevelItem(self, image: frozendict[Application, Version]) -> None:
+        item = self._topLevelItems.pop(image)
+
+        for i in range(self.ui.treeWidget.topLevelItemCount()):
+            if self.ui.treeWidget.topLevelItem(i) is item:
+                self.ui.treeWidget.takeTopLevelItem(i)
 
     def columnIndex(self, kind: Application) -> int:
         header = self.ui.treeWidget.headerItem()
