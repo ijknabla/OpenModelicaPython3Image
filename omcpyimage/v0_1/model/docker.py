@@ -4,7 +4,10 @@ from asyncio import gather
 from asyncio.subprocess import PIPE, create_subprocess_exec
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack
+from enum import Enum, auto
+from functools import reduce
 from importlib.resources import read_binary
+from operator import or_
 
 from frozendict import frozendict
 from pydantic import BaseModel, ConfigDict
@@ -29,6 +32,7 @@ class Request(BaseModel):
                 f"ijknabla/openmodelica:v{om.short!s}-python{py.short!s}",
             ]
 
+            yield Response(stage=Stage.build, state=State.begin)
             docker_build = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(
                     "docker",
@@ -59,18 +63,24 @@ class Request(BaseModel):
             docker_build.stdin.write(read_binary("omcpyimage.v0_1", "Dockerfile"))
             docker_build.stdin.write_eof()
 
-            await docker_build.wait()
+            yield Response(
+                stage=Stage.build, state=State.end, returncode=await docker_build.wait()
+            )
 
+            yield Response(stage=Stage.check, state=State.begin)
             check = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(
                     "docker", "run", tags[0], *_check_command(om=om, py=py)
                 )
             )
 
-            await check.wait()
+            yield Response(
+                stage=Stage.check, state=State.end, returncode=await check.wait()
+            )
 
             if self.push:
-                await gather(
+                yield Response(stage=Stage.push, state=State.begin)
+                returncode = await gather(
                     *[
                         (
                             await stack.enter_async_context(
@@ -82,11 +92,29 @@ class Request(BaseModel):
                         for tag in tags
                     ]
                 )
+                yield Response(
+                    stage=Stage.push,
+                    state=State.end,
+                    returncode=reduce(or_, returncode, 0),
+                )
 
-        yield Response()
+
+class Stage(Enum):
+    build = auto()
+    check = auto()
+    push = auto()
 
 
-class Response(BaseModel): ...
+class State(Enum):
+    begin = auto()
+    running = auto()
+    end = auto()
+
+
+class Response(BaseModel):
+    stage: Stage
+    state: State
+    returncode: int | None = None
 
 
 def _check_command(om: Version, py: Version) -> tuple[str, ...]:
