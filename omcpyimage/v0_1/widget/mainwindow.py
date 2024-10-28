@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 
 from bidict import bidict
 from frozendict import frozendict
@@ -19,11 +19,10 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        __default_image = frozendict[Application, Version]()
-
-        self.topLevelItems = bidict(
-            {__default_image: self.addTopLevelItem(__default_image)}
-        )
+        self._topLevelItems = bidict[
+            frozendict[Application, Version], QTreeWidgetItem
+        ]()
+        self._newTopLevelItem(frozendict[Application, Version]())
 
     def setModel(self, model: Model) -> None:
         model.findversion_response.connect(self.update_version)
@@ -52,7 +51,9 @@ class MainWindow(QMainWindow):
         self.ui.treeWidget.clear()
         self.ui.treeWidget.addTopLevelItems(items)
 
-    def addTopLevelItem(self, image: Mapping[Application, Version]) -> QTreeWidgetItem:
+    def _newTopLevelItem(
+        self, image: frozendict[Application, Version]
+    ) -> QTreeWidgetItem:
         item = QTreeWidgetItem()
 
         for app in Application:
@@ -62,6 +63,7 @@ class MainWindow(QMainWindow):
             )
 
         self.ui.treeWidget.addTopLevelItem(item)
+        self._topLevelItems[image] = item
 
         return item
 
