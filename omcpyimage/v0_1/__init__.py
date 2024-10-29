@@ -20,6 +20,11 @@ if TYPE_CHECKING:
 P = ParamSpec("P")
 
 
+class Application(Enum):
+    openmodelica = auto()
+    python = auto()
+
+
 @total_ordering
 class Image(BaseModel):
     model_config = ConfigDict(frozen=True)
