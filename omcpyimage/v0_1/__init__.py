@@ -32,6 +32,10 @@ class Image(BaseModel):
     om: OMVersion
     py: PyVersion
 
+    @property
+    def mapping(self) -> dict[Application, Version]:
+        return {Application.openmodelica: self.om, Application.python: self.py}
+
     def __lt__(self, other: Self) -> bool:
         return self.om < other.om or self.py < other.py
 
