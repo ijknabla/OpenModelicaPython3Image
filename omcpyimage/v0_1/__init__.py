@@ -58,9 +58,7 @@ class Image(BaseModel):
                     *[
                         (
                             await stack.enter_async_context(
-                                _create2open(create_subprocess_exec)(
-                                    "docker", "push", tag
-                                )
+                                _create2open(create_subprocess_exec)(*push_cmd(tag))
                             )
                         ).wait()
                         for tag in tags
@@ -118,6 +116,10 @@ def test_cmd(version: Mapping[Application, Version], tag: str) -> tuple[str, ...
                 ]
             ),
         )
+
+
+def push_cmd(tag: str) -> tuple[str, ...]:
+    return ("docker", "push", tag)
 
 
 @total_ordering
