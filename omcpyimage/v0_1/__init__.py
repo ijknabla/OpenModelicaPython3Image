@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from asyncio import gather
 from asyncio.subprocess import PIPE, Process, create_subprocess_exec
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager
 from enum import Enum, auto
 from functools import total_ordering, wraps
+from importlib.resources import as_file, files
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, Any, NewType, ParamSpec, Self
 
@@ -140,6 +141,34 @@ assert Path(result.resultFile).exists(), "Check simulation output"
 
 OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")
+
+
+def build_cmd(
+    version: Mapping[Application, Version],
+    tags: Sequence[str],
+) -> tuple[str, ...]:
+    with as_file(files(__package__)) as dockerfile:
+        om = version[Application.openmodelica]
+        py = version[Application.python]
+        return (
+            "docker",
+            "build",
+            "--build-arg",
+            f"OM_MAJOR={om.major}",
+            "--build-arg",
+            f"OM_MINOR={om.minor}",
+            "--build-arg",
+            f"OM_PATCH={om.patch}",
+            "--build-arg",
+            f"PY_MAJOR={py.major}",
+            "--build-arg",
+            f"PY_MINOR={py.minor}",
+            "--build-arg",
+            f"PY_PATCH={py.patch}",
+            "--target=final",
+            *(f"--tag={tag}" for tag in tags),
+            dockerfile.__fspath__(),
+        )
 
 
 @total_ordering
