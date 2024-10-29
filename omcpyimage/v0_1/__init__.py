@@ -40,26 +40,7 @@ class Image(BaseModel):
     def __lt__(self, other: Self) -> bool:
         return self.om < other.om or self.py < other.py
 
-    @property
-    def docker_build_arg(self) -> tuple[str, ...]:
-        return (
-            "--build-arg",
-            f"OM_MAJOR={self.om.major}",
-            "--build-arg",
-            f"OM_MINOR={self.om.minor}",
-            "--build-arg",
-            f"OM_PATCH={self.om.patch}",
-            "--build-arg",
-            f"PY_MAJOR={self.py.major}",
-            "--build-arg",
-            f"PY_MINOR={self.py.minor}",
-            "--build-arg",
-            f"PY_PATCH={self.py.patch}",
-        )
-
-    async def deploy(
-        self, dockerfile: bytes, tags: Sequence[str], *, push: bool
-    ) -> None:
+    async def deploy(self, tags: Sequence[str], *, push: bool) -> None:
         async with AsyncExitStack() as stack:
             build = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(*build_cmd(self.mapping, tags))
