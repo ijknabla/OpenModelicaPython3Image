@@ -47,12 +47,10 @@ class Image(BaseModel):
             )
             await build.wait()
 
-            check = await stack.enter_async_context(
-                _create2open(create_subprocess_exec)(
-                    "docker", "run", tags[0], *self._check_command
-                )
+            test = await stack.enter_async_context(
+                _create2open(create_subprocess_exec)(*test_cmd(self.mapping, tags[0]))
             )
-            if await check.wait():
+            if await test.wait():
                 return
 
             if push:
@@ -68,21 +66,6 @@ class Image(BaseModel):
                         for tag in tags
                     ]
                 )
-
-    @property
-    def _check_command(self) -> tuple[str, ...]:
-        with as_file(files(__package__).joinpath("test.py")) as test_py:
-            return (
-                "bash",
-                "-c",
-                " && ".join(
-                    [
-                        "python -m pip install click openmodelicacompiler",
-                        f"python -c '{test_py.read_text(encoding='utf-8')}' "
-                        f"--openmodelica-version={self.om} --python-version={self.py}",
-                    ]
-                ),
-            )
 
 
 OMVersion = NewType("OMVersion", "Version")
@@ -114,6 +97,26 @@ def build_cmd(
             "--target=final",
             *(f"--tag={tag}" for tag in tags),
             dockerfile.__fspath__(),
+        )
+
+
+def test_cmd(version: Mapping[Application, Version], tag: str) -> tuple[str, ...]:
+    om = version[Application.openmodelica]
+    py = version[Application.python]
+    with as_file(files(__package__).joinpath("test.py")) as test_py:
+        return (
+            "docker",
+            "run",
+            tag,
+            "bash",
+            "-c",
+            " && ".join(
+                [
+                    "python -m pip install click openmodelicacompiler",
+                    f"python -c '{test_py.read_text(encoding='utf-8')}' "
+                    f"--openmodelica-version={om} --python-version={py}",
+                ]
+            ),
         )
 
 
