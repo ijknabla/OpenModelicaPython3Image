@@ -71,39 +71,18 @@ class Image(BaseModel):
 
     @property
     def _check_command(self) -> tuple[str, ...]:
-        script = f"""\
-import sys
-from logging import *
-from omc4py import *
-from pathlib import *
-
-assert sys.version.startswith("{self.py!s}"), "Check Python version"
-
-logger=getLogger("omc4py")
-logger.addHandler(StreamHandler())
-logger.setLevel(DEBUG)
-s=open_session()
-
-version = s.getVersion(); s.__check__()
-assert version.startswith(f"v{self.om!s}"), "Check OpenModelica version"
-
-installed = s.installPackage("Modelica"); s.__check__()
-assert installed, "Install Modelica package"
-
-loaded = s.loadModel("Modelica"); s.__check__()
-assert loaded, "Load Modelica package"
-
-result = s.simulate("Modelica.Blocks.Examples.PID_Controller"); s.__check__()
-assert \
-    "The simulation finished successfully." in result.messages, \
-    "Check simulation result"
-assert Path(result.resultFile).exists(), "Check simulation output"
-"""
-        return (
-            "bash",
-            "-c",
-            f"python -m pip install openmodelicacompiler && python -c '{script}'",
-        )
+        with as_file(files(__package__).joinpath("test.py")) as test_py:
+            return (
+                "bash",
+                "-c",
+                " && ".join(
+                    [
+                        "python -m pip install click openmodelicacompiler",
+                        f"python -c '{test_py.read_text(encoding='utf-8')}' "
+                        f"--openmodelica-version={self.om} --python-version={self.py}",
+                    ]
+                ),
+            )
 
 
 OMVersion = NewType("OMVersion", "Version")
