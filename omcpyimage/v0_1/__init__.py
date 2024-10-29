@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from asyncio import gather
-from asyncio.subprocess import PIPE, Process, create_subprocess_exec
+from asyncio.subprocess import Process, create_subprocess_exec
 from collections.abc import Iterator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager
 from enum import Enum, auto
@@ -61,24 +61,10 @@ class Image(BaseModel):
         self, dockerfile: bytes, tags: Sequence[str], *, push: bool
     ) -> None:
         async with AsyncExitStack() as stack:
-            docker_build = await stack.enter_async_context(
-                _create2open(create_subprocess_exec)(
-                    "docker",
-                    "build",
-                    *self.docker_build_arg,
-                    "-",
-                    "--target=final",
-                    *(f"--tag={tag}" for tag in tags),
-                    stdin=PIPE,
-                )
+            build = await stack.enter_async_context(
+                _create2open(create_subprocess_exec)(*build_cmd(self.mapping, tags))
             )
-            if docker_build.stdin is None:
-                raise RuntimeError
-
-            docker_build.stdin.write(dockerfile)
-            docker_build.stdin.write_eof()
-
-            await docker_build.wait()
+            await build.wait()
 
             check = await stack.enter_async_context(
                 _create2open(create_subprocess_exec)(
