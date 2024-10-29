@@ -3,7 +3,6 @@ from __future__ import annotations
 from asyncio import gather, run
 from collections import defaultdict
 from functools import wraps
-from importlib.resources import read_binary
 from itertools import product
 from typing import TYPE_CHECKING
 
@@ -48,9 +47,7 @@ async def build(
     for (om, py), ims in categories.items():
         tags[max(ims)].append(f"ijknabla/openmodelica:v{om!s}-python{py!s}")
 
-    dockerfile = read_binary(__package__, "Dockerfile")
-
-    await gather(*(im.deploy(dockerfile, tags[im], push=push) for im in image))
+    await gather(*(im.deploy(tags[im], push=push) for im in image))
 
     print("=" * 72)
     for _, tt in sorted(tags.items()):

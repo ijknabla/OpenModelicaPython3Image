@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import re
 from asyncio import gather
-from asyncio.subprocess import PIPE, Process, create_subprocess_exec
-from collections.abc import Iterator
+from asyncio.subprocess import Process, create_subprocess_exec
+from collections.abc import Iterator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager
 from enum import Enum, auto
 from functools import total_ordering, wraps
+from importlib.resources import as_file, files
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, Any, NewType, ParamSpec, Self
 
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
 P = ParamSpec("P")
 
 
+class Application(Enum):
+    openmodelica = auto()
+    python = auto()
+
+
 @total_ordering
 class Image(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -27,55 +33,24 @@ class Image(BaseModel):
     om: OMVersion
     py: PyVersion
 
+    @property
+    def mapping(self) -> dict[Application, Version]:
+        return {Application.openmodelica: self.om, Application.python: self.py}
+
     def __lt__(self, other: Self) -> bool:
         return self.om < other.om or self.py < other.py
 
-    @property
-    def docker_build_arg(self) -> tuple[str, ...]:
-        return (
-            "--build-arg",
-            f"OM_MAJOR={self.om.major}",
-            "--build-arg",
-            f"OM_MINOR={self.om.minor}",
-            "--build-arg",
-            f"OM_PATCH={self.om.patch}",
-            "--build-arg",
-            f"PY_MAJOR={self.py.major}",
-            "--build-arg",
-            f"PY_MINOR={self.py.minor}",
-            "--build-arg",
-            f"PY_PATCH={self.py.patch}",
-        )
-
-    async def deploy(
-        self, dockerfile: bytes, tags: Sequence[str], *, push: bool
-    ) -> None:
+    async def deploy(self, tags: Sequence[str], *, push: bool) -> None:
         async with AsyncExitStack() as stack:
-            docker_build = await stack.enter_async_context(
-                _create2open(create_subprocess_exec)(
-                    "docker",
-                    "build",
-                    *self.docker_build_arg,
-                    "-",
-                    "--target=final",
-                    *(f"--tag={tag}" for tag in tags),
-                    stdin=PIPE,
-                )
+            build = await stack.enter_async_context(
+                _create2open(create_subprocess_exec)(*build_cmd(self.mapping, tags))
             )
-            if docker_build.stdin is None:
-                raise RuntimeError
+            await build.wait()
 
-            docker_build.stdin.write(dockerfile)
-            docker_build.stdin.write_eof()
-
-            await docker_build.wait()
-
-            check = await stack.enter_async_context(
-                _create2open(create_subprocess_exec)(
-                    "docker", "run", tags[0], *self._check_command
-                )
+            test = await stack.enter_async_context(
+                _create2open(create_subprocess_exec)(*test_cmd(self.mapping, tags[0]))
             )
-            if await check.wait():
+            if await test.wait():
                 return
 
             if push:
@@ -83,54 +58,68 @@ class Image(BaseModel):
                     *[
                         (
                             await stack.enter_async_context(
-                                _create2open(create_subprocess_exec)(
-                                    "docker", "push", tag
-                                )
+                                _create2open(create_subprocess_exec)(*push_cmd(tag))
                             )
                         ).wait()
                         for tag in tags
                     ]
                 )
 
-    @property
-    def _check_command(self) -> tuple[str, ...]:
-        script = f"""\
-import sys
-from logging import *
-from omc4py import *
-from pathlib import *
-
-assert sys.version.startswith("{self.py!s}"), "Check Python version"
-
-logger=getLogger("omc4py")
-logger.addHandler(StreamHandler())
-logger.setLevel(DEBUG)
-s=open_session()
-
-version = s.getVersion(); s.__check__()
-assert version.startswith(f"v{self.om!s}"), "Check OpenModelica version"
-
-installed = s.installPackage("Modelica"); s.__check__()
-assert installed, "Install Modelica package"
-
-loaded = s.loadModel("Modelica"); s.__check__()
-assert loaded, "Load Modelica package"
-
-result = s.simulate("Modelica.Blocks.Examples.PID_Controller"); s.__check__()
-assert \
-    "The simulation finished successfully." in result.messages, \
-    "Check simulation result"
-assert Path(result.resultFile).exists(), "Check simulation output"
-"""
-        return (
-            "bash",
-            "-c",
-            f"python -m pip install openmodelicacompiler && python -c '{script}'",
-        )
-
 
 OMVersion = NewType("OMVersion", "Version")
 PyVersion = NewType("PyVersion", "Version")
+
+
+def build_cmd(
+    version: Mapping[Application, Version],
+    tags: Sequence[str],
+) -> tuple[str, ...]:
+    with as_file(files(__package__)) as dockerfile:
+        om = version[Application.openmodelica]
+        py = version[Application.python]
+        return (
+            "docker",
+            "build",
+            "--build-arg",
+            f"OM_MAJOR={om.major}",
+            "--build-arg",
+            f"OM_MINOR={om.minor}",
+            "--build-arg",
+            f"OM_PATCH={om.patch}",
+            "--build-arg",
+            f"PY_MAJOR={py.major}",
+            "--build-arg",
+            f"PY_MINOR={py.minor}",
+            "--build-arg",
+            f"PY_PATCH={py.patch}",
+            "--target=final",
+            *(f"--tag={tag}" for tag in tags),
+            dockerfile.__fspath__(),
+        )
+
+
+def test_cmd(version: Mapping[Application, Version], tag: str) -> tuple[str, ...]:
+    om = version[Application.openmodelica]
+    py = version[Application.python]
+    with as_file(files(__package__).joinpath("test.py")) as test_py:
+        return (
+            "docker",
+            "run",
+            tag,
+            "bash",
+            "-c",
+            " && ".join(
+                [
+                    "python -m pip install click openmodelicacompiler",
+                    f"python -c '{test_py.read_text(encoding='utf-8')}' "
+                    f"--openmodelica-version={om} --python-version={py}",
+                ]
+            ),
+        )
+
+
+def push_cmd(tag: str) -> tuple[str, ...]:
+    return ("docker", "push", tag)
 
 
 @total_ordering
