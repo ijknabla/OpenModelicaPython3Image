@@ -30,7 +30,9 @@ def gui() -> None:
     with MainWindow.open() as main_window:
         main_window.show()
 
-        exit(app.exec())
+        status = app.exec()
+
+    exit(status)
 
 
 @main.command()
