@@ -27,10 +27,10 @@ def main() -> None: ...
 def gui() -> None:
     app = QApplication()
 
-    main_window = MainWindow()
-    main_window.show()
+    with MainWindow.open() as main_window:
+        main_window.show()
 
-    exit(app.exec())
+        exit(app.exec())
 
 
 @main.command()
