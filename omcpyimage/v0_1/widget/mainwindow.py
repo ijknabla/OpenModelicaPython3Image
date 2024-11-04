@@ -27,8 +27,17 @@ class MainWindow(QMainWindow):
 
             pool = QThreadPool(self)
             stack.callback(pool.waitForDone, -1)
+            stack.callback(print, "pool.waitForDone")
 
             executor = stack.enter_context(ProcessPoolExecutor())
+            stack.callback(print, "Model.close")
             stack.enter_context(Model.open(self, executor=executor, pool=pool))
 
             yield self
+
+    @property
+    def model(self) -> Model:
+        for child in self.children():
+            if isinstance(child, Model):
+                return child
+        raise RuntimeError

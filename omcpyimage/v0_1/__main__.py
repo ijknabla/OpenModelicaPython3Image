@@ -8,6 +8,7 @@ from sys import exit
 from typing import TYPE_CHECKING
 
 import click
+from pydantic import BaseModel
 from PySide6.QtWidgets import QApplication
 
 from . import Image, Version
@@ -23,12 +24,25 @@ if TYPE_CHECKING:
 def main() -> None: ...
 
 
+class Request(BaseModel):
+    payload: str
+
+    async def reply(self):
+        yield Response(payload=self.payload)
+
+
+class Response(BaseModel):
+    payload: str
+
+
 @main.command()
 def gui() -> None:
     app = QApplication()
 
     with MainWindow.open() as main_window:
         main_window.show()
+
+        main_window.model.request.emit(Request(payload="hoge"))
 
         status = app.exec()
 
