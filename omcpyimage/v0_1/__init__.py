@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import multiprocessing.synchronize
 import re
-from asyncio import Task, gather, wait
+from asyncio import Task, gather, get_running_loop, wait
 from asyncio.subprocess import Process, create_subprocess_exec
 from collections.abc import Coroutine, Iterable, Iterator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager
@@ -220,6 +221,16 @@ def _wrap_as_wait_and_remove(
 
 
 wait_and_remove = _wrap_as_wait_and_remove(wait)
+
+
+async def wait_multiprocessing_event(
+    event: multiprocessing.synchronize.Event, period: float
+) -> AsyncIterator[bool]:
+    while done := not await get_running_loop().run_in_executor(
+        None, event.wait, period
+    ):
+        yield done
+    yield done
 
 
 def _create2aopen(
