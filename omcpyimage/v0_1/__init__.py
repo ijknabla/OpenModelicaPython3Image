@@ -20,7 +20,8 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
 P = ParamSpec("P")
-T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
 
 
 class Application(Enum):
@@ -205,14 +206,14 @@ class Version(
 
 def _wrap_as_wait_and_remove(
     f: Callable[
-        Concatenate[Iterable[Task[T]], P],
-        Coroutine[Any, Any, tuple[set[Task[T]], set[Task[T]]]],
+        Concatenate[Iterable[Task[T1]], P],
+        Coroutine[Any, Any, tuple[set[Task[T1]], set[Task[T1]]]],
     ],
-) -> Callable[Concatenate[set[Task[T]], P], Coroutine[Any, Any, set[Task[T]]]]:
+) -> Callable[Concatenate[set[Task[T1]], P], Coroutine[Any, Any, set[Task[T1]]]]:
     @wraps(f)
     async def wrapped(
-        pending: set[Task[T]], /, *args: P.args, **kwargs: P.kwargs
-    ) -> set[Task[T]]:
+        pending: set[Task[T1]], /, *args: P.args, **kwargs: P.kwargs
+    ) -> set[Task[T1]]:
         done, _ = await f(pending, *args, **kwargs)
         pending -= done
         return done
@@ -221,6 +222,12 @@ def _wrap_as_wait_and_remove(
 
 
 wait_and_remove = _wrap_as_wait_and_remove(wait)
+
+
+async def collect(
+    callable: Callable[[T1], T2], iterator: AsyncIterator[T1]
+) -> list[T2]:
+    return [callable(item) async for item in iterator]
 
 
 async def wait_multiprocessing_event(
