@@ -43,12 +43,12 @@ class Image(BaseModel):
     async def deploy(self, tags: Sequence[str], *, push: bool) -> None:
         async with AsyncExitStack() as stack:
             build = await stack.enter_async_context(
-                _create2open(create_subprocess_exec)(*build_cmd(self.mapping, tags))
+                aopen_subprocess_exec(*build_cmd(self.mapping, tags))
             )
             await build.wait()
 
             test = await stack.enter_async_context(
-                _create2open(create_subprocess_exec)(*test_cmd(self.mapping, tags[0]))
+                aopen_subprocess_exec(*test_cmd(self.mapping, tags[0]))
             )
             if await test.wait():
                 return
@@ -58,7 +58,7 @@ class Image(BaseModel):
                     *[
                         (
                             await stack.enter_async_context(
-                                _create2open(create_subprocess_exec)(*push_cmd(tag))
+                                aopen_subprocess_exec(*push_cmd(tag))
                             )
                         ).wait()
                         for tag in tags
@@ -201,7 +201,7 @@ class Version(
                 raise NotImplementedError(root)
 
 
-def _create2open(
+def _create2aopen(
     f: Callable[P, Coroutine[Any, Any, Process]],
 ) -> Callable[P, AbstractAsyncContextManager[Process]]:
     @wraps(f)
@@ -219,3 +219,6 @@ def _create2open(
                     await process.wait()
 
     return wrapped
+
+
+aopen_subprocess_exec = _create2aopen(create_subprocess_exec)
