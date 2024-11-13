@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import re
-from asyncio import gather
+from asyncio import Task, gather, wait
 from asyncio.subprocess import Process, create_subprocess_exec
-from collections.abc import Iterator, Mapping
+from collections.abc import Coroutine, Iterable, Iterator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager
 from enum import Enum, auto
 from functools import total_ordering, wraps
 from importlib.resources import as_file, files
 from subprocess import CalledProcessError
-from typing import TYPE_CHECKING, Any, NewType, ParamSpec, Self
+from typing import TYPE_CHECKING, Any, Concatenate, NewType, ParamSpec, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, NonNegativeInt, RootModel, model_validator
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
 P = ParamSpec("P")
+T = TypeVar("T")
 
 
 class Application(Enum):
@@ -199,6 +200,26 @@ class Version(
                 return major, minor, patch
             case _:
                 raise NotImplementedError(root)
+
+
+def _wrap_as_wait_and_remove(
+    f: Callable[
+        Concatenate[Iterable[Task[T]], P],
+        Coroutine[Any, Any, tuple[set[Task[T]], set[Task[T]]]],
+    ],
+) -> Callable[Concatenate[set[Task[T]], P], Coroutine[Any, Any, set[Task[T]]]]:
+    @wraps(f)
+    async def wrapped(
+        pending: set[Task[T]], /, *args: P.args, **kwargs: P.kwargs
+    ) -> set[Task[T]]:
+        done, _ = await f(pending, *args, **kwargs)
+        pending -= done
+        return done
+
+    return wrapped
+
+
+wait_and_remove = _wrap_as_wait_and_remove(wait)
 
 
 def _create2aopen(
