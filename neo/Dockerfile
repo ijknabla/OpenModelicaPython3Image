@@ -35,13 +35,6 @@ RUN \
     -DCMAKE_INSTALL_PREFIX=/artifact/usr/ \
     && make -C /build -j4 install \
     && rm -rf /source /build
-RUN \
-    apt purge -y \
-    git ca-certificates \
-    autoconf cmake make \
-    gcc g++ gfortran-11 default-jre \
-    libcurl4-openssl-dev uuid-dev libexpat1-dev \
-    libblas-dev liblapack-dev
 
 FROM ubuntu:22.04 AS python
 
