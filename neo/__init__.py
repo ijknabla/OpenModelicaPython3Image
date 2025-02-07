@@ -2,29 +2,41 @@ from __future__ import annotations
 
 import re
 from asyncio import subprocess
-from collections.abc import AsyncIterator, Sequence
+from collections import defaultdict
+from collections.abc import AsyncIterator, Mapping, Sequence
 from importlib.resources import as_file, files
 from typing import NewType, Self
 
 from pydantic import BaseModel, ConfigDict
 
 _URI = NewType("_URI", str)
-_Tag = NewType("_Tag", str)
 _TargetName = NewType("_TargetName", str)
 
 OPENMODELICA_URI = "https://github.com/OpenModelica/OpenModelica.git"
 PYTHON_URI = "https://github.com/python/cpython.git"
 
 
-async def iter_tags_in_remote(uri: _URI) -> AsyncIterator[_Tag]:
+async def categorize_version(
+    uri: _URI,
+) -> dict[tuple[int, int], tuple[int, int, int]]:
+    result = defaultdict(lambda: set())
+    async for v in _iter_tags_in_remote(uri):
+        result[v[:2]].add(v)
+    return dict(sorted(result.items()))
+
+
+async def _iter_tags_in_remote(uri: _URI) -> AsyncIterator[tuple[int, int, int]]:
     process = await subprocess.create_subprocess_exec(
         "git", "ls-remote", "--tags", uri, stdout=subprocess.PIPE
     )
     if process.stdout is None:
         raise RuntimeError
     async for buffer in process.stdout:
-        for matched in re.finditer(rb"[a-z0-9]{40}\s+(?P<tag>\S+)", buffer):
-            yield _Tag(matched.group("tag").decode("ascii"))
+        for matched in re.finditer(
+            rb"^[a-z0-9]{40}\s+\S+v?(?P<version>\d+\.\d+\.\d+)$", buffer
+        ):
+            major, minor, patch = map(int, matched.group("version").split(b"."))
+            yield major, minor, patch
 
 
 class DockerBake(BaseModel):
