@@ -51,21 +51,16 @@ RUN \
     libssl-dev zlib1g-dev \
     libbz2-dev libreadline-dev libsqlite3-dev curl git \
     libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-    && mkdir /source \
+    && rm -rf /var/lib/apt/lists/*
+RUN \
+    mkdir /source \
     && curl -fsSL https://www.python.org/ftp/python/${VERSION}/Python-${VERSION}.tgz | tar zxf - -C/source --strip-components=1 \
     && cd /source \
     && ./configure --enable-optimizations --without-static-libpython --prefix /artifact/usr \
     && make -j4 \
     && make install \
     && rm -rf /source \
-    && find /artifact/usr -type l | xargs rm \
-    && apt purge -y \
-    ca-certificates clang \
-    libssl-dev zlib1g-dev \
-    libbz2-dev libreadline-dev libsqlite3-dev curl git \
-    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+    && find /artifact/usr -type l | xargs rm
 
 FROM ubuntu:22.04 AS final
 
