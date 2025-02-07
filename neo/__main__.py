@@ -22,7 +22,7 @@ async def main(*, indent: int | None) -> None:
             openmodelica=max(openmodelica_long),
             python=max(python_long),
         )
-        for openmodelica_short, openmodelica_long in openmodelica.items() if (1, 24) <= openmodelica_short
+        for openmodelica_short, openmodelica_long in openmodelica.items() if (1, 20) <= openmodelica_short
         for python_short, python_long in python.items() if (3, 12) <= python_short
     ]
 
