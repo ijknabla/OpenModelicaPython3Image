@@ -23,7 +23,7 @@ async def main(*, indent: int | None) -> None:
             python=max(python_long),
         )
         for openmodelica_short, openmodelica_long in openmodelica.items() if (1, 20) <= openmodelica_short
-        for python_short, python_long in python.items() if (3, 12) <= python_short
+        for python_short, python_long in python.items() if (3, 9) <= python_short
     ]
 
     sys.exit(await DockerBake.from_targets(targets).build(indent=indent))
